@@ -1,0 +1,9 @@
+data
+.idea
+.DS_Store
+__pycache*
+output/*
+
+*.pt
+*.err
+*.out
