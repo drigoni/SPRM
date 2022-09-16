@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # params
-PROJECT_HOME=/home/drigoni/repository/Multimodal-Alignment-Framework
+PROJECT_HOME=/home/drigoni/repository/weakvg
 BATCH_SIZE=16
 DEVICE='cuda'
 COSINE_SIMILARITY_STRATEGY='mean'

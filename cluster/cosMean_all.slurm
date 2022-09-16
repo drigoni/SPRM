@@ -10,7 +10,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --constraint=ampere
+#SBATCH --constraint=A5000
 #SBATCH --exclusive								
 #SBATCH --mem=50G								### RAM
 #SBATCH --time=1-12:00:00					    ### time

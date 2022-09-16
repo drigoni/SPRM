@@ -1,0 +1,195 @@
+Date: Thu 12 May 2022 05:01:51 PM CEST
+Directory: /home/drigoni/repository/Multimodal-Alignment-Framework
+Questo job viene eseguito sui seguenti nodi: dellsrv1
+
+
+Namespace(batch=64, lr=1e-05, eval=False, epochs=25, save_name='model', test_set=False, seed=42, vgg=False)
+Use 1 gpus
+Read in 400002 vectors of size 300
+Load Done!
+load flickr30k dataset successfully.
+CUDA available
+Load Done!
+load flickr30k dataset successfully.
+---Before Training...
+     eval score on test dataset: (0.538806702657225, 0.08177759740259741)
+--- EPOCH 0
+     time: 87.99120354652405
+     total loss: 2.841837793601512
+     supervised accuracy on training set:  0.3816414686825054
+     eval time: 12.458897352218628
+     supervised accuracy on test dataset: 0.455762987012987
+     eval score on test dataset: 0.5790174504169878
+--- EPOCH 1
+     time: 134.5291907787323
+     total loss: 2.006054054738121
+     supervised accuracy on training set:  0.5060272678185745
+     eval time: 12.724440574645996
+     supervised accuracy on test dataset: 0.5142045454545454
+     eval score on test dataset: 0.585136933529453
+--- EPOCH 2
+     time: 148.84273505210876
+     total loss: 1.6876300325661446
+     supervised accuracy on training set:  0.5601579373650108
+     eval time: 12.630249977111816
+     supervised accuracy on test dataset: 0.5529626623376623
+     eval score on test dataset: 0.593592260235558
+--- EPOCH 3
+     time: 154.38786840438843
+     total loss: 1.5278931982316415
+     supervised accuracy on training set:  0.5941144708423326
+     eval time: 12.583556890487671
+     supervised accuracy on test dataset: 0.5801542207792207
+     eval score on test dataset: 0.5933141775877777
+--- EPOCH 4
+     time: 149.40796995162964
+     total loss: 1.4270214632829374
+     supervised accuracy on training set:  0.6166104211663067
+     eval time: 12.784855604171753
+     supervised accuracy on test dataset: 0.5919237012987013
+     eval score on test dataset: 0.5947611710323575
+--- EPOCH 5
+     time: 153.14643359184265
+     total loss: 1.3514410097192224
+     supervised accuracy on training set:  0.6334098272138229
+     eval time: 12.746795654296875
+     supervised accuracy on test dataset: 0.611810064935065
+     eval score on test dataset: 0.5985150942074665
+--- EPOCH 6
+     time: 156.88944149017334
+     total loss: 1.2915337515186285
+     supervised accuracy on training set:  0.6478401727861771
+     eval time: 12.445859909057617
+     supervised accuracy on test dataset: 0.611810064935065
+     eval score on test dataset: 0.5973088513560866
+--- EPOCH 7
+     time: 156.16761016845703
+     total loss: 1.2424621186555076
+     supervised accuracy on training set:  0.660407667386609
+     eval time: 12.64175033569336
+     supervised accuracy on test dataset: 0.6272321428571429
+     eval score on test dataset: 0.5957565996778937
+--- EPOCH 8
+     time: 162.56084871292114
+     total loss: 1.201809171672516
+     supervised accuracy on training set:  0.6694654427645789
+     eval time: 12.72693681716919
+     supervised accuracy on test dataset: 0.6296672077922078
+     eval score on test dataset: 0.5976472235837826
+--- EPOCH 9
+     time: 158.05145287513733
+     total loss: 1.1667718809057774
+     supervised accuracy on training set:  0.6786379589632829
+     eval time: 12.621553897857666
+     supervised accuracy on test dataset: 0.6442775974025974
+     eval score on test dataset: 0.5957088767353808
+--- EPOCH 10
+     time: 157.17055201530457
+     total loss: 1.1387235505534556
+     supervised accuracy on training set:  0.6851444384449245
+     eval time: 12.523033857345581
+     supervised accuracy on test dataset: 0.6369724025974026
+     eval score on test dataset: 0.5980515839641155
+--- EPOCH 11
+     time: 155.02850103378296
+     total loss: 1.1120265886541576
+     supervised accuracy on training set:  0.6914889308855292
+     eval time: 12.7138512134552
+     supervised accuracy on test dataset: 0.6532061688311688
+     eval score on test dataset: 0.5973451327433629
+--- EPOCH 12
+     time: 151.70369029045105
+     total loss: 1.0904221998177646
+     supervised accuracy on training set:  0.6962405507559395
+     eval time: 12.764868259429932
+     supervised accuracy on test dataset: 0.6548295454545454
+     eval score on test dataset: 0.5960204582078049
+--- EPOCH 13
+     time: 154.1532051563263
+     total loss: 1.0652171849689525
+     supervised accuracy on training set:  0.7033612311015118
+     eval time: 12.651059627532959
+     supervised accuracy on test dataset: 0.6519886363636364
+     eval score on test dataset: 0.5971006372995308
+--- EPOCH 14
+     time: 149.66522336006165
+     total loss: 1.0469838350431966
+     supervised accuracy on training set:  0.7080656047516198
+     eval time: 12.698957443237305
+     supervised accuracy on test dataset: 0.65625
+     eval score on test dataset: 0.5974864845889208
+--- EPOCH 15
+     time: 156.99423623085022
+     total loss: 1.0293999097259718
+     supervised accuracy on training set:  0.7122840172786177
+     eval time: 12.476916074752808
+     supervised accuracy on test dataset: 0.6584821428571429
+     eval score on test dataset: 0.5961188174302928
+--- EPOCH 16
+     time: 152.69704151153564
+     total loss: 1.0095511187230022
+     supervised accuracy on training set:  0.7163944384449245
+     eval time: 12.39353346824646
+     supervised accuracy on test dataset: 0.6582792207792207
+     eval score on test dataset: 0.5982161668656507
+--- EPOCH 17
+     time: 156.66825795173645
+     total loss: 0.9940062685610151
+     supervised accuracy on training set:  0.7207208423326134
+     eval time: 12.701862812042236
+     supervised accuracy on test dataset: 0.6663961038961039
+     eval score on test dataset: 0.5976430976430976
+--- EPOCH 18
+     time: 152.30881929397583
+     total loss: 0.9768138119262959
+     supervised accuracy on training set:  0.7260259179265659
+     eval time: 12.72969675064087
+     supervised accuracy on test dataset: 0.6663961038961039
+     eval score on test dataset: 0.600785799480811
+--- EPOCH 19
+     time: 155.36056566238403
+     total loss: 0.9637916779157667
+     supervised accuracy on training set:  0.728091252699784
+     eval time: 12.492478132247925
+     supervised accuracy on test dataset: 0.661323051948052
+     eval score on test dataset: 0.5996212918156953
+--- EPOCH 20
+     time: 156.28604555130005
+     total loss: 0.9505410114065874
+     supervised accuracy on training set:  0.7311420086393089
+     eval time: 12.658691167831421
+     supervised accuracy on test dataset: 0.6682224025974026
+     eval score on test dataset: 0.5976567980917638
+--- EPOCH 21
+     time: 153.3992657661438
+     total loss: 0.9351923174271058
+     supervised accuracy on training set:  0.7363188444924406
+     eval time: 12.7749662399292
+     supervised accuracy on test dataset: 0.6781655844155844
+     eval score on test dataset: 0.5981485377656217
+--- EPOCH 22
+     time: 158.8161392211914
+     total loss: 0.9253378948434126
+     supervised accuracy on training set:  0.7379387149028078
+     eval time: 12.494779109954834
+     supervised accuracy on test dataset: 0.671875
+     eval score on test dataset: 0.5994250455756556
+--- EPOCH 23
+     time: 157.1331548690796
+     total loss: 0.9126319308517818
+     supervised accuracy on training set:  0.7418938984881209
+     eval time: 12.825995922088623
+     supervised accuracy on test dataset: 0.6702516233766234
+     eval score on test dataset: 0.5978123685317627
+--- EPOCH 24
+     time: 159.8911099433899
+     total loss: 0.9014113753712203
+     supervised accuracy on training set:  0.7446814254859612
+     eval time: 12.769060850143433
+     supervised accuracy on test dataset: 0.6777597402597403
+     eval score on test dataset: 0.5980357769203788
+save model to output/model.pt
+
+
+Job done.
+Date: Thu 12 May 2022 06:16:27 PM CEST

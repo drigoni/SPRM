@@ -1,0 +1,14 @@
+Date: Wed 11 May 2022 05:33:28 AM UTC
+Directory: /home/drigoni/repository/Multimodal-Alignment-Framework
+Questo job viene eseguito sui seguenti nodi: vgpu1-0
+
+
+Read in 400002 vectors of size 300
+Load Done!
+load flickr30k dataset successfully.
+CUDA available
+evaluation localization score: 0.6132871972318339
+
+
+Job done.
+Date: Wed 11 May 2022 06:52:28 AM UTC
