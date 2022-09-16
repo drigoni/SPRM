@@ -154,19 +154,17 @@ class MATnet(nn.Module):
 		with torch.no_grad():
 			if self.cosine_similarity_strategy == 'mean':
 				q_emb = torch.sum(q_emb, dim=2) / num_words.unsqueeze(-1)		# [b, query, dim]
-				q_emb_ext = q_emb.unsqueeze(2).unsqueeze(2) #.repeat(1, 1, batch_size, n_proposals, 1)		# [b, query, b, proposal, dim]
-				k_emb_ext = k_emb.unsqueeze(0).unsqueeze(0) #.repeat(batch_size, n_queries, 1, 1, 1)		# [b, query, b, proposal, dim]
+				q_emb_ext = q_emb.unsqueeze(2).unsqueeze(2)	# [b, query, b, 1, 1]
+				k_emb_ext = k_emb.unsqueeze(0).unsqueeze(0)	# [1, 1, b, proposal, dim]
 				scores = self.similarity_function(q_emb_ext, k_emb_ext)		# [b, query, b, proposal]
 			elif self.cosine_similarity_strategy == 'max':
-				pass
-				# TODO pensaci e completa
+				# TODO: finisci
 				# select the score considering only the most similar words in a query with the labels
-				q_emb_ext = q_emb.unsqueeze(3).unsqueeze(3).repeat(1, 1, 1, batch_size, n_proposals, 1)	# [b, query, word, proposal, dim]
-				k_emb_ext = k_emb.unsqueeze(0).unsqueeze(0).unsqueeze(0).repeat(batch_size, n_queries, n_words, 1, 1, 1)		# [b, query, word, b, proposal, dim]
+				q_emb_ext = q_emb.unsqueeze(3).unsqueeze(3)	# [b, query, 1, 1, dim]
+				k_emb_ext = k_emb.unsqueeze(0).unsqueeze(0).unsqueeze(0)	# [1, 1, 1, b, proposal, dim]
 				scores_middle = self.similarity_function(q_emb_ext, k_emb_ext)	# [b, query, word, b, proposal]
-				scores_prop_max, scores_prop_idx =  torch.max(scores_middle, dim=-1)	# [b, query, word, b]
-				scores_max, scores_idx =  torch.max(scores_prop_max, dim=-1)	# [b, query]
-				scores = scores_max
+				scores_prop_max, scores_prop_idx =  torch.max(scores_middle, dim=2)	# [b, query, b, proposals]
+				scores = scores_prop_max
 			else:
 				print("Error, cosine_similarity_strategy '{}' not defined. ".format(self.cosine_similarity_strategy))
 				exit(1)
