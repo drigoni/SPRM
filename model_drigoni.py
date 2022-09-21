@@ -16,7 +16,8 @@ class MATnet(nn.Module):
 		self.similarity_function = nn.CosineSimilarity(dim=-1)
 		self.emb_dim = args.emb_dim
 		self.feature_dim = args.feature_dim
-		self.cosine_similarity_strategy = args.cosine_similarity_strategy
+		self.cosine_similarity_strategy = args.cosine_similarity_strategy	
+		self.prediction_weight = args.cosine_weight
 
 		# other NN
 		self.wordemb = wordvec
@@ -67,7 +68,7 @@ class MATnet(nn.Module):
 		# get similarity scores
 		# NOTE: everything from here is masked with -100 and not 0.
 		concepts_similarity = self._get_concept_similarity(q_emb, k_emb, num_words, mask) 	# TODO: change q_emb with h_emb in _encode
-		prediction_scores = self._get_predictions(q_feat, v_feat, concepts_similarity, mask)
+		prediction_scores = self._get_predictions(q_feat, v_feat, concepts_similarity, mask, self.prediction_weight)
 		prediction_loss, target = self.get_predictions_for_loss(prediction_scores, bool_queries)
 		return prediction_scores, prediction_loss, target
 	
@@ -109,7 +110,7 @@ class MATnet(nn.Module):
 		target = torch.argmax(target, dim=-1)	# [b]
 		return scores, target
 
-	def _get_predictions(self, q_feat, v_feat, concepts_similarity, mask, weight=0.5):
+	def _get_predictions(self, q_feat, v_feat, concepts_similarity, mask, weight):
 		"""
 		:param q_feat: features of the queries [b, query, dim]
 		:param v_feat: visual features of the bounding boxes [b, proposal, dim]
