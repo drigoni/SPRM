@@ -62,8 +62,8 @@ class MATnet(nn.Module):
 
 		# get embeddings
 		q_emb, k_emb, attr_emb, h_emb = self._encode(query, label, attrs, head)
-		v_feat = self._get_image_features(bboxes, proposals_features, bool_proposals)
-		q_feat = self._get_query_features(h_emb, num_words)
+		v_feat = self._get_image_features(bboxes, proposals_features, bool_proposals, 1)
+		q_feat = self._get_query_features(h_emb, num_words, 1, 300)
 
 		# get similarity scores
 		# NOTE: everything from here is masked with -100 and not 0.
@@ -175,7 +175,7 @@ class MATnet(nn.Module):
 
 		return scores
 
-	def _get_query_features(self, q_emb, q_length, norm=1, emb_dim=300):
+	def _get_query_features(self, q_emb, q_length, norm, emb_dim):
 		"""
 		:param: q_emb: embedding of each phrase
 		:param: q_length: length of each phrase
@@ -204,7 +204,7 @@ class MATnet(nn.Module):
 		queries_x_norm = F.normalize(queries_x, p=norm, dim=-1)
 		return queries_x_norm
 
-	def _get_image_features(self, boxes, boxes_feat, bool_proposals, norm=1):
+	def _get_image_features(self, boxes, boxes_feat, bool_proposals, norm):
 		"""
 		Normalize bounding box features and concatenate its spacial features (position and area).
 
