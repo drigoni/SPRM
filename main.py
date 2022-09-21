@@ -40,9 +40,10 @@ def parse_args():
 	parser.add_argument('--cosine_similarity_strategy', type= str, default='mean',
 						choices=['mean', 'max'])
 	parser.add_argument('--loss_strategy', type= str, default='luca',
-						choices=['luca', 'all'])
+						choices=['luca', 'all', 'ce'])
 	parser.add_argument('--emb_dim', type= int, default=300)
 	parser.add_argument('--feature_dim', type= int, default=2048)
+	parser.add_argument('--cosine_weight', type=float, default=0.5)
 
 	# debug mode
 	parser.add_argument('--debug', action = 'store_true')
@@ -79,6 +80,6 @@ if __name__ == '__main__':
 		else:
 			train_dset = Flickr30dataset(wordEmbedding, "train")
 		train_loader = DataLoader(train_dset, batch_size = args.batch, num_workers = 4, drop_last = True, shuffle = True)
-		train(model, loss, train_loader, test_loader, lr = args.lr, epochs = args.epochs, device_str=args.device)
+		train(model, loss, train_loader, test_loader, args, lr = args.lr, epochs = args.epochs, device_str=args.device)
 		torch.save(model.cpu().state_dict(), save_path)
 		print("save model to", save_path)

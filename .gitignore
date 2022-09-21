@@ -3,6 +3,7 @@ data
 .DS_Store
 __pycache*
 output/*
+wandb/*
 
 *.pt
 *.err

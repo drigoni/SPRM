@@ -2,10 +2,10 @@
 ### Owner: Davide Rigoni
 
 ### ============ SLURM COMMANDS
-#SBATCH --job-name='cosMean_ce'
+#SBATCH --job-name='cosMean_lossLuca_epoch25_cosW075'
 #SBATCH --mail-user=drigoni@math.unipd.it 		## user's email
-#SBATCH --error=cosMean_ce.err
-#SBATCH --output=cosMean_ce.out
+#SBATCH --error=cluster/err/cosMean_lossLuca_epoch25_cosW075.err
+#SBATCH --output=cluster/out/cosMean_lossLuca_epoch25_cosW075.out
 #SBATCH --partition=testing
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -29,7 +29,7 @@ echo ''
 
 
 ### ============ COMMAND TO EXECUTE
-bash ./experiments/cosMean_ce.bash
+bash ./experiments/cosW075/cosMean_lossLuca_epoch25_cosW075.bash
 
 # last default print
 echo ''

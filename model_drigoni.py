@@ -21,7 +21,7 @@ class MATnet(nn.Module):
 		# other NN
 		self.wordemb = wordvec
 		self.indexer = wordvec.word_indexer
-		self.wv = nn.Embedding.from_pretrained(torch.from_numpy(wordvec.vectors), freeze = False)
+		self.wv = nn.Embedding.from_pretrained(torch.from_numpy(wordvec.vectors), freeze = True)
 
 		# NN image branch
 		self.linear_img = nn.Linear(self.feature_dim+5, self.emb_dim)
@@ -31,7 +31,7 @@ class MATnet(nn.Module):
 		# NN text branch
 		self.queries_rnn = nn.LSTM(300, self.emb_dim, num_layers=1, bidirectional=False, batch_first=False)
 
-	def forward(self, query, head, label, proposals_features, attrs, bboxes, num_query, num_proposal):
+	def forward(self, query, head, label, proposals_features, attrs, bboxes):
 		"""
 		:param idx:
 		:param query: [B, all_query=32, Q=12] pad with 0
@@ -40,8 +40,6 @@ class MATnet(nn.Module):
 		:param proposals_features: [B, K, feature_dim] pad with 0
 		:param attrs: [B, K=64] pad with 0
 		:param bboxes: [B, K, 5] pad with 0
-		:param num_query: number of queries
-		:param num_proposal: number of proposals
 		:return: prediction_scores, prediction_loss, target 
 		"""
 		# params
@@ -73,8 +71,8 @@ class MATnet(nn.Module):
 		prediction_loss, target = self.get_predictions_for_loss(prediction_scores, bool_queries)
 		return prediction_scores, prediction_loss, target
 	
-	def predict(self, query, head, label, feature, attrs, num_query, num_proposal, bboxes):
-		prediction_scores, prediction_loss, target = self.forward(query, head, label, feature, attrs, bboxes, num_query, num_proposal)
+	def predict(self, query, head, label, feature, attrs, bboxes):
+		prediction_scores, prediction_loss, target = self.forward(query, head, label, feature, attrs, bboxes)
 		batch_size = prediction_scores.shape[0]
 		n_query = prediction_scores.shape[1]
 		n_proposal = prediction_scores.shape[3]
@@ -89,9 +87,9 @@ class MATnet(nn.Module):
 		bbox_ext = bboxes.unsqueeze(1).repeat(1, n_query, 1, 1)	# [B, n_query, n_proposals, 5]
 		bbox_ext = bbox_ext[..., :4] # remove area in last position # [B, n_query, n_proposals, 4]
 		index_bbox =  prediction_labels.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, 1, 4)	# [B, n_query, 1, 4]
-		selected_bbox = torch.gather(bbox_ext, 2, index_bbox).squeeze(2)
+		selected_bbox = torch.gather(bbox_ext, 2, index_bbox).squeeze(2)	# [B, n_query, 4]
 
-		return predictions, selected_bbox, prediction_loss, target
+		return predictions, prediction_loss, selected_bbox
 	
 	def get_predictions_for_loss(self, prediction_scores, bool_queries):
 		"""
@@ -125,13 +123,14 @@ class MATnet(nn.Module):
 		n_proposals = v_feat.shape[1]
 
 		# calculate similarity scores
-		q_feat_ext = q_feat.unsqueeze(2).unsqueeze(2) #.repeat(1, 1, batch_size, n_proposals, 1)		# [b, query, b, proposal, dim]
-		k_feat_ext = v_feat.unsqueeze(0).unsqueeze(0) #.repeat(batch_size, n_queries, 1, 1, 1)		# [b, query, b, proposal, dim]
+		q_feat_ext = q_feat.unsqueeze(2).unsqueeze(2)	# [b, query, b, proposal, dim]
+		k_feat_ext = v_feat.unsqueeze(0).unsqueeze(0)	# [b, query, b, proposal, dim]
 		predictions_qk = self.similarity_function(q_feat_ext, k_feat_ext)		# [b, query, b, proposal]
 
 		# merge the predictions with the concept similarity scores
 		predictions = weight*predictions_qk + (1-weight)*concepts_similarity
-		
+		# predictions = concepts_similarity
+
 		# mask
 		predictions = predictions.masked_fill(mask, -100)
 
@@ -139,7 +138,7 @@ class MATnet(nn.Module):
 
 	def _get_concept_similarity(self, q_emb, k_emb, num_words, mask):
 		"""
-		:param h_emb: embedding of the queries words heads [b, query, words, dim]
+		:param q_emb: embedding of the queries words heads [b, query, words, dim]
 		:param k_emb: embedding of the bounding boxes classes [b, proposal, dim]
 		:param num_words: number of words for each query [b, query]
 		:param mask: boolean mask [b, query, b, proposal] with values as {True, False}
@@ -154,17 +153,18 @@ class MATnet(nn.Module):
 		with torch.no_grad():
 			if self.cosine_similarity_strategy == 'mean':
 				q_emb = torch.sum(q_emb, dim=2) / num_words.unsqueeze(-1)		# [b, query, dim]
-				q_emb_ext = q_emb.unsqueeze(2).unsqueeze(2)	# [b, query, b, 1, 1]
+				q_emb_ext = q_emb.unsqueeze(2).unsqueeze(2)	# [b, query, 1, 1, dim]
 				k_emb_ext = k_emb.unsqueeze(0).unsqueeze(0)	# [1, 1, b, proposal, dim]
 				scores = self.similarity_function(q_emb_ext, k_emb_ext)		# [b, query, b, proposal]
 			elif self.cosine_similarity_strategy == 'max':
-				# TODO: finisci
 				# select the score considering only the most similar words in a query with the labels
 				q_emb_ext = q_emb.unsqueeze(3).unsqueeze(3)	# [b, query, 1, 1, dim]
 				k_emb_ext = k_emb.unsqueeze(0).unsqueeze(0).unsqueeze(0)	# [1, 1, 1, b, proposal, dim]
 				scores_middle = self.similarity_function(q_emb_ext, k_emb_ext)	# [b, query, word, b, proposal]
-				scores_prop_max, scores_prop_idx =  torch.max(scores_middle, dim=2)	# [b, query, b, proposals]
-				scores = scores_prop_max
+				scores_prop_max, scores_prop_idx =  torch.max(scores_middle, dim=-1)	# [b, query, words, b]
+				scores_words_max, scores_words_idx =  torch.max(scores_prop_max, dim=2)	# [b, query, b]
+				index_best_word = scores_words_idx.unsqueeze(2).unsqueeze(-1)	# [b, query, 1, b, 1]
+				scores = torch.gather(scores_middle, 2, index_best_word).squeeze(2)	# [b, query, b, proposal]
 			else:
 				print("Error, cosine_similarity_strategy '{}' not defined. ".format(self.cosine_similarity_strategy))
 				exit(1)
