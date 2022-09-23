@@ -2,9 +2,9 @@
 ### Owner: Davide Rigoni
 
 ### ============ SLURM COMMANDS
-#SBATCH --job-name='cosMean_lossAll_epoch25_cosW05'  # create a short name for your job
+#SBATCH --job-name='cosMean_lossAll_epoch25_cosW1'  # create a short name for your job
 #SBATCH --mail-user=davide.rigoni.2@phd.unipd.it
-#SBATCH --output=cluster/out/cosMean_lossAll_epoch25_cosW05.out
+#SBATCH --output=cluster/out/cosMean_lossAll_epoch25_cosW1.out
 #SBATCH --partition=testing
 #SBATCH --mem=50G				                    # total memory per node
 #SBATCH --time=2-00:00:00                           # total run time limit (DD-HH:MM:SS)
@@ -51,12 +51,12 @@ echo "SLURM_MASTER_URL: " ${SLURM_MASTER_URL}
 echo "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX "
 echo ''
 
-
 ### ============ COMMAND TO EXECUTE
-bash ./experiments/cosW025/cosMean_lossLuca_epoch25_cosW025.bash
+bash ./experiments/cosW1/cosMean_lossLuca_epoch25_cosW1.bash
 
 # last default print
 echo ''
 echo ''
 echo 'Job done.'
 echo 'Date: ' $(date)
+
