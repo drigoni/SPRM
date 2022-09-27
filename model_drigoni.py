@@ -18,6 +18,7 @@ class MATnet(nn.Module):
 		self.feature_dim = args.feature_dim
 		self.cosine_similarity_strategy = args.cosine_similarity_strategy	
 		self.prediction_weight = args.cosine_weight
+		self.use_att_for_query = args.use_att_for_query
 
 		# other NN
 		self.wordemb = wordvec
@@ -31,6 +32,9 @@ class MATnet(nn.Module):
 		nn.init.zeros_(self.linear_img.bias)
 		# NN text branch
 		self.queries_rnn = nn.LSTM(300, self.emb_dim, num_layers=1, bidirectional=False, batch_first=False)
+		self.linear_p = nn.Linear(self.emb_dim, self.emb_dim)
+		self.linear_mini = nn.Linear(self.emb_dim, self.emb_dim)
+		self.queries_softmax = nn.Softmax(dim = -1)
 
 	def forward(self, query, head, label, proposals_features, attrs, bboxes):
 		"""
@@ -63,7 +67,11 @@ class MATnet(nn.Module):
 		# get embeddings
 		q_emb, k_emb, attr_emb, h_emb = self._encode(query, label, attrs, head)
 		v_feat = self._get_image_features(bboxes, proposals_features, bool_proposals, 1)
-		q_feat = self._get_query_features(h_emb, num_words, 1, 300)
+		if self.use_att_for_query is False:
+			# so use LSTM
+			q_feat = self._get_query_features(q_emb, num_words, 1, 300)
+		else:
+			q_feat = self._get_query_features_att(q_emb, k_emb)
 
 		# get similarity scores
 		# NOTE: everything from here is masked with -100 and not 0.
@@ -203,6 +211,20 @@ class MATnet(nn.Module):
 		# normalize features
 		queries_x_norm = F.normalize(queries_x, p=norm, dim=-1)
 		return queries_x_norm
+
+	def _get_query_features_att(self, q_emb, k_emb, eps=1e-5):
+		# q_emb [B, querys, Q, dim]
+		scale = 1.0 / np.sqrt(k_emb.size(-1))
+		att = torch.einsum('byqd,bkd ->byqk', q_emb, k_emb)
+		att = self.queries_softmax(att.mul_(scale))  # [B, querys, Q, K]
+
+		q_max_att = torch.max(att, dim = 3).values  # [B, querys, Q]
+		q_max_norm_att = self.queries_softmax(q_max_att)
+		# attended
+		p_emb = torch.einsum('byq,byqd -> byd', q_max_norm_att, q_emb)  # [B, querys, dim]
+		p_emb = self.linear_p(p_emb) + eps * self.linear_mini(p_emb)
+
+		return p_emb
 
 	def _get_image_features(self, boxes, boxes_feat, bool_proposals, norm):
 		"""

@@ -44,6 +44,7 @@ def parse_args():
 	parser.add_argument('--emb_dim', type= int, default=300)
 	parser.add_argument('--feature_dim', type= int, default=2048)
 	parser.add_argument('--cosine_weight', type=float, default=0.5)
+	parser.add_argument('--use_att_for_query', action = 'store_true', help = "disable LSTM for query features and use attention")
 
 	# debug mode
 	parser.add_argument('--debug', action = 'store_true')
