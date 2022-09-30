@@ -23,7 +23,8 @@ class MATnet(nn.Module):
 		# other NN
 		self.wordemb = wordvec
 		self.indexer = wordvec.word_indexer
-		self.wv = nn.Embedding.from_pretrained(torch.from_numpy(wordvec.vectors), freeze = True)
+		self.wv = nn.Embedding.from_pretrained(torch.from_numpy(wordvec.vectors), freeze = False)
+		self.wv_freezed = nn.Embedding.from_pretrained(torch.from_numpy(wordvec.vectors), freeze = True)
 
 		# NN image branch
 		self.linear_img = nn.Linear(self.feature_dim+5, self.emb_dim)
@@ -66,6 +67,7 @@ class MATnet(nn.Module):
 
 		# get embeddings
 		q_emb, k_emb, attr_emb, h_emb = self._encode(query, label, attrs, head)
+		q_emb_freezed, k_emb_freezed = self._encode_freezed(query, label, attrs, head)
 		v_feat = self._get_image_features(bboxes, proposals_features, bool_proposals, 1)
 		if self.use_att_for_query is False:
 			# so use LSTM
@@ -75,7 +77,7 @@ class MATnet(nn.Module):
 
 		# get similarity scores
 		# NOTE: everything from here is masked with -100 and not 0.
-		concepts_similarity = self._get_concept_similarity(q_emb, k_emb, num_words, mask) 	# TODO: change q_emb with h_emb in _encode
+		concepts_similarity = self._get_concept_similarity(q_emb_freezed, k_emb_freezed, num_words, mask) 	# TODO: change q_emb with h_emb in _encode
 		prediction_scores = self._get_predictions(q_feat, v_feat, concepts_similarity, mask, self.prediction_weight)
 		prediction_loss, target = self.get_predictions_for_loss(prediction_scores, bool_queries)
 		return prediction_scores, prediction_loss, target
@@ -260,4 +262,21 @@ class MATnet(nn.Module):
 		attr_emb = self.wv(attrs)
 		head_emb = self.wv(query) # TODO: risolvi
 		return q_emb, k_emb, attr_emb, head_emb
+	
+	def _encode_freezed(self, query, label, attrs, head):
+		"""
+		:param query: query phrases [B, queries, words]
+		:param label: object labels, predicted by the detector [B, objects]
+		:param attrs: object attributes, predicted by the detector [B, objects]
+		:param head: query phrases head [B, heads]
+
+		:return: 	q_emb[B, queries, words, dim] for query word embedding;
+					k_emb[B, objects, dim] for object embedding
+					attr_emb[B, objects, dim] for attribute embedding
+					head_emb[B, heads, dim] for head word embedding;
+		"""
+
+		q_emb = self.wv_freezed(query)
+		k_emb = self.wv_freezed(label)
+		return q_emb, k_emb
 
