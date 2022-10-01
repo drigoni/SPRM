@@ -2,9 +2,9 @@
 ### Owner: Davide Rigoni
 
 ### ============ SLURM COMMANDS
-#SBATCH --job-name='cosMean_lossAll_epoch25_cosW05'  # create a short name for your job
+#SBATCH --job-name='cosMean_lossAll_epoch25_cosW075'  # create a short name for your job
 #SBATCH --mail-user=davide.rigoni.2@phd.unipd.it
-#SBATCH --output=cluster/out/cosMean_lossAll_epoch25_cosW05.out
+#SBATCH --output=cluster/out/cosMean_lossAll_epoch25_cosW075.out
 #SBATCH --partition=testing
 #SBATCH --mem=50G				                    # total memory per node
 #SBATCH --time=2-00:00:00                           # total run time limit (DD-HH:MM:SS)
