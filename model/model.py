@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.utils.rnn as rnn
+from typing import Dict, List, Callable
 
 class MATnet(nn.Module):
 	def __init__(self, wordvec, args):
@@ -27,14 +28,10 @@ class MATnet(nn.Module):
 		self.wv_freezed = nn.Embedding.from_pretrained(torch.from_numpy(wordvec.vectors), freeze = True)
 
 		# NN image branch
-		self.linear_img = nn.Linear(self.feature_dim+5, self.emb_dim)
-		self.linear_img_act = nn.ReLU()
-		nn.init.xavier_uniform_(self.linear_img.weight)
-		nn.init.zeros_(self.linear_img.bias)
+		self.img_mlp = MLP(self.feature_dim+5, self.emb_dim, [1024], F.leaky_relu)
 		# NN text branch
 		self.queries_rnn = nn.LSTM(300, self.emb_dim, num_layers=1, bidirectional=False, batch_first=False)
-		self.linear_p = nn.Linear(self.emb_dim, self.emb_dim)
-		self.linear_mini = nn.Linear(self.emb_dim, self.emb_dim)
+		self.queries_mlp = MLP(self.emb_dim, self.emb_dim, [self.emb_dim], F.leaky_relu)
 		self.queries_softmax = nn.Softmax(dim = -1)
 
 	def forward(self, query, head, label, proposals_features, attrs, bboxes):
@@ -211,8 +208,8 @@ class MATnet(nn.Module):
 		queries_x = queries_x.squeeze(1).view(batch_size, n_queries, emb_dim)              # [b, n_queries, dim]
 		queries_x = queries_x.masked_fill(mask, 0) 
 		# normalize features
-		queries_x_norm = F.normalize(queries_x, p=norm, dim=-1)
-		return queries_x_norm
+		# queries_x_norm = F.normalize(queries_x, p=norm, dim=-1)
+		return queries_x
 
 	def _get_query_features_att(self, q_emb, k_emb, eps=1e-5):
 		# q_emb [B, querys, Q, dim]
@@ -224,7 +221,7 @@ class MATnet(nn.Module):
 		q_max_norm_att = self.queries_softmax(q_max_att)
 		# attended
 		p_emb = torch.einsum('byq,byqd -> byd', q_max_norm_att, q_emb)  # [B, querys, dim]
-		p_emb = self.linear_p(p_emb) + eps * self.linear_mini(p_emb)
+		p_emb = self.queries_mlp(p_emb)
 
 		return p_emb
 
@@ -238,9 +235,9 @@ class MATnet(nn.Module):
 		:return: A [b, proposal, fi + 5] tensor
 		"""
 		mask = bool_proposals.unsqueeze(-1)	# [b, proposals, 1]
-		boxes_feat = F.normalize(boxes_feat, p=norm, dim=-1)
+		# boxes_feat = F.normalize(boxes_feat, p=norm, dim=-1)
 		boxes_feat = torch.cat([boxes_feat, boxes], dim=-1)		# here there is also the area
-		boxes_feat = self.linear_img_act(self.linear_img(boxes_feat))
+		boxes_feat = self.img_mlp(self.linear_img(boxes_feat))
 		boxes_feat = boxes_feat.masked_fill(mask==0, 0)
 		return boxes_feat
 
@@ -278,5 +275,40 @@ class MATnet(nn.Module):
 
 		q_emb = self.wv_freezed(query)
 		k_emb = self.wv_freezed(label)
+		# attr_emb = self.wv_freezed(attrs)
+		# head_emb = self.wv_freezed(query) # TODO: risolvi
 		return q_emb, k_emb
 
+
+
+
+class MLP(nn.Module):
+    def __init__(self, in_size: int, out_size: int, hid_sizes: List[int],
+                 activation_function: Callable = F.relu,
+                 init_function: Callable = nn.init.xavier_normal_):
+        super().__init__()
+        self.in_size = in_size
+        self.out_size = out_size
+        self.hid_sizes = hid_sizes
+        self.activation_function = activation_function
+        self.init_function = init_function
+        self.layers = self.make_network_params()
+
+    def make_network_params(self):
+        dims = [self.in_size] + self.hid_sizes + [self.out_size]
+        weight_sizes = list(zip(dims[:-1], dims[1:]))
+        # definition
+        layers = nn.ModuleList([nn.Linear(s[0], s[1]) for (i, s) in enumerate(weight_sizes)])
+        # init
+        for layer in layers:
+            self.init_function(layer.weight)
+            nn.init.zeros_(layer.bias)
+        return layers
+
+    def forward(self, inputs):
+        acts = inputs
+        for layer in self.layers:
+            hid = layer(acts)
+            acts = self.activation_function(hid)
+        last_hidden = hid
+        return last_hidden
