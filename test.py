@@ -5,9 +5,9 @@ import torch
 from torch.utils.data import DataLoader
 import wandb
 
-from dataset import Flickr30dataset
-from model_drigoni import MATnet
-from train_model import evaluate
+from model.dataset import Flickr30dataset
+from model.model import MATnet
+from model.train_model import evaluate
 from utils.utils import load_vocabulary, init_net
 
 

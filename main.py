@@ -7,11 +7,11 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from dataset import Flickr30dataset
+from model.dataset import Flickr30dataset
 # from model import MATnet
-from model_drigoni import MATnet
-from loss import WeakVtgLoss
-from train_model import train, evaluate
+from model.model import MATnet
+from model.loss import WeakVtgLoss
+from model.train_model import train, evaluate
 from utils.utils import load_vocabulary
 
 with warnings.catch_warnings():
