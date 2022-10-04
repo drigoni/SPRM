@@ -237,7 +237,7 @@ class MATnet(nn.Module):
 		mask = bool_proposals.unsqueeze(-1)	# [b, proposals, 1]
 		# boxes_feat = F.normalize(boxes_feat, p=norm, dim=-1)
 		boxes_feat = torch.cat([boxes_feat, boxes], dim=-1)		# here there is also the area
-		boxes_feat = self.img_mlp(self.linear_img(boxes_feat))
+		boxes_feat = self.img_mlp(boxes_feat)
 		boxes_feat = boxes_feat.masked_fill(mask==0, 0)
 		return boxes_feat
 
