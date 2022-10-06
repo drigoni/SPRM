@@ -28,11 +28,13 @@ class MATnet(nn.Module):
 		self.wv_freezed = nn.Embedding.from_pretrained(torch.from_numpy(wordvec.vectors), freeze = True)
 
 		# NN image branch
+		self.linear_img = nn.Linear(20, 20)
 		self.img_mlp = MLP(self.feature_dim+5, self.emb_dim, [1024], F.leaky_relu)
 		# NN text branch
 		self.queries_rnn = nn.LSTM(300, self.emb_dim, num_layers=1, bidirectional=False, batch_first=False)
 		self.queries_mlp = MLP(self.emb_dim, self.emb_dim, [self.emb_dim], F.leaky_relu)
 		self.queries_softmax = nn.Softmax(dim = -1)
+		
 
 	def forward(self, query, head, label, proposals_features, attrs, bboxes):
 		"""
