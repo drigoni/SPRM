@@ -29,10 +29,10 @@ class MATnet(nn.Module):
 
 		# NN image branch
 		self.linear_img = nn.Linear(20, 20)
-		self.img_mlp = MLP(self.feature_dim+5, self.emb_dim, [1024], F.leaky_relu)
+		self.img_mlp = MLP(self.feature_dim+5, self.emb_dim, [1024, 1024, 512], F.leaky_relu)
 		# NN text branch
 		self.queries_rnn = nn.LSTM(300, self.emb_dim, num_layers=1, bidirectional=False, batch_first=False)
-		self.queries_mlp = MLP(self.emb_dim, self.emb_dim, [self.emb_dim], F.leaky_relu)
+		self.queries_mlp = MLP(self.emb_dim, self.emb_dim, [self.emb_dim, self.emb_dim, self.emb_dim], F.leaky_relu)
 		self.queries_softmax = nn.Softmax(dim = -1)
 		
 
