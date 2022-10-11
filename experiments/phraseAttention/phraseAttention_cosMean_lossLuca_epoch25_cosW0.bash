@@ -2,13 +2,13 @@
 
 # params
 PROJECT_HOME=/ceph/hpc/home/eudavider/repository/weakvg
-BATCH_SIZE=16
+BATCH_SIZE=8
 EPOCHS=25
-COSINE_WEIGHT=1
+COSINE_WEIGHT=0
 DEVICE='cuda'
 COSINE_SIMILARITY_STRATEGY='mean'
-LOSS_STRATEGY='all'
-MODEL_NAME='cosMean_lossAll_epoch25_cosW1'
+LOSS_STRATEGY='luca'
+MODEL_NAME='phraseAttention_cosMean_lossLuca_epoch25_cosW0'
 
 # command
 python ${PROJECT_HOME}/main.py  --batch ${BATCH_SIZE} \
@@ -17,4 +17,5 @@ python ${PROJECT_HOME}/main.py  --batch ${BATCH_SIZE} \
                                 --device ${DEVICE} \
                                 --save_name ${MODEL_NAME} \
                                 --cosine_similarity_strategy ${COSINE_SIMILARITY_STRATEGY} \
-                                --loss_strategy ${LOSS_STRATEGY}
+                                --loss_strategy ${LOSS_STRATEGY} \
+                                --use_att_for_query

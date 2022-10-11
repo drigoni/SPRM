@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # params
-PROJECT_HOME=/home/drigoni/repository/weakvg
+PROJECT_HOME=/ceph/hpc/home/eudavider/repository/weakvg
 BATCH_SIZE=1
 DEVICE='cuda'
 COSINE_SIMILARITY_STRATEGY='mean'
