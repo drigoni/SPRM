@@ -7,7 +7,7 @@
 #SBATCH --output=cluster/out/cosMean_lossLuca_epoch25_cosW%a.out
 #SBATCH --partition=gpu
 #SBATCH --mem=50G				                    # total memory per node
-#SBATCH --time=0-24:00:00                           # total run time limit (DD-HH:MM:SS)
+#SBATCH --time=0-12:00:00                           # total run time limit (DD-HH:MM:SS)
 #SBATCH --nodes=1                                   # node count
 #SBATCH --ntasks-per-node=1                         # total number of tasks per node
 #SBATCH --cpus-per-task=16		                    # cpu-cores per task (>1 if multi-threaded tasks)
