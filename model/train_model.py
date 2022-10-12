@@ -29,11 +29,12 @@ def train(model, loss_function, train_loader, test_loader, args, lr = 1e-4, epoc
 	model = model.float()
 	optimizer = torch.optim.Adam(model.parameters(), lr = lr)
 
-	print("--- Before Training...")
-	score = evaluate(test_loader, model, device_str)
-	print("Eval score on test dataset:", score)
+	# print("--- Evaluation Before Training...")
+	# score = evaluate(test_loader, model, device_str)
+	# print("Eval score on test dataset:", score)
 
 	for epoch in range(epochs):
+		print("--- EPOCH", epoch)
 		t = time.time()
 		total_loss = 0
 		n_batches = 0
@@ -61,17 +62,14 @@ def train(model, loss_function, train_loader, test_loader, args, lr = 1e-4, epoc
 			# update variables
 			n_batches += 1
 			total_loss += loss.item()
-			
+		
 		t1 = time.time()
-		print("--- EPOCH", epoch)
-		print("     time:", t1 - t)
-		print("     total loss:", total_loss / n_batches)
+		print("Training -> time: {} | total_loss: {} .".format(t1 - t, total_loss / n_batches))
 
-		t2 = time.time()
 		# evaluate
+		t2 = time.time()
 		score = evaluate(test_loader, model, device_str)
-		print("     eval time:", time.time() - t2)
-		print("     eval score on test dataset:", score)
+		print("Evaluation -> time: {} | score: {} .".format(time.time() - t2, score))
 
 		wandb.log({	"loss": total_loss / n_batches,
 					"acc_val": score

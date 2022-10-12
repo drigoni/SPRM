@@ -40,6 +40,7 @@ class MATnet(nn.Module):
 
 	def forward(self, query, head, label, proposals_features, attrs, bboxes):
 		"""
+		NOTE: PAD is always 0 and UNK is always 1 by construction.
 		:param idx:
 		:param query: [B, all_query=32, Q=12] pad with 0
 		:param head: [B, all_query=32] pad with 0
@@ -54,33 +55,35 @@ class MATnet(nn.Module):
 		n_queries = query.shape[1]
 		n_proposals = proposals_features.shape[1]
 		# build variables
-		bool_words = torch.greater(query, 0).type(torch.long)	# [B, query, words]
-		bool_queries = torch.any(bool_words, dim=-1).type(torch.long)	# [B, query]
-		num_words = torch.sum(bool_words, dim=-1)				# [B, query]
-		bool_proposals = torch.greater(bboxes, 0).type(torch.long)	# [B, proposals, 5]
-		bool_proposals = torch.any(bool_proposals, dim=-1).type(torch.long)	# [B, proposals]
-		num_proposal = torch.sum(bool_proposals, dim=-1)				# [B]
+		bool_words = torch.greater(query, 0).type(torch.long)					# [B, query, words]
+		bool_queries = torch.any(bool_words, dim=-1).type(torch.long)			# [B, query]
+		num_words = torch.sum(bool_words, dim=-1)								# [B, query]
+		bool_proposals = torch.greater(bboxes, 0).type(torch.long)				# [B, proposals, 5]
+		bool_proposals = torch.any(bool_proposals, dim=-1).type(torch.long)		# [B, proposals]
+		num_proposal = torch.sum(bool_proposals, dim=-1)						# [B]
 
 		# generate boolean mask
 		mask_bool_queries_ext =  bool_queries.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, batch_size, n_proposals)
 		mask_bool_proposals_ext =  bool_proposals.unsqueeze(0).unsqueeze(0).repeat(batch_size, n_queries, 1, 1)
 		mask = (mask_bool_queries_ext * mask_bool_proposals_ext) == 0	# [b, n_queries, b, n_proposal]
 
-		# get embeddings
-		q_emb, k_emb, attr_emb, h_emb = self._encode(query, label, attrs, head)
-		q_emb_freezed, k_emb_freezed = self._encode_freezed(query, label, attrs, head)
+		# get embeddings. NOTE: inputs padded with 0
+		q_emb, k_emb = self._encode(query, label, attrs, head, bool_words, bool_proposals)
+		q_emb_freezed, k_emb_freezed = self._encode_freezed(query, label, attrs, head, bool_words, bool_proposals)
+		# get features. NOTE: inputs padded with 0
 		v_feat = self._get_image_features(bboxes, proposals_features, bool_proposals, 1)
 		if self.use_att_for_query is False:
 			# so use LSTM
-			q_feat = self._get_query_features(q_emb, num_words, 1, 300)
+			q_feat = self._get_query_features(q_emb, num_words, 300, 1)
 		else:
-			q_feat = self._get_query_features_att(q_emb, k_emb)
+			q_feat = self._get_query_features_att(q_emb, k_emb, bool_queries, bool_proposals) # TODO FINISCI E CONTROLLA LA MASCHERA
 
 		# get similarity scores
-		# NOTE: everything from here is masked with -100 and not 0.
-		concepts_similarity = self._get_concept_similarity(q_emb_freezed, k_emb_freezed, num_words, mask) 	# TODO: change q_emb with h_emb in _encode
+		# NOTE: everything from here is masked with -1e8 and not 0.
+		concepts_similarity = self._get_concept_similarity(q_emb_freezed, k_emb_freezed, num_words, mask)
 		prediction_scores = self._get_predictions(q_feat, v_feat, concepts_similarity, mask, self.prediction_weight)
-		prediction_loss, target = self.get_predictions_for_loss(prediction_scores, bool_queries)
+		prediction_loss, target = self.get_predictions_for_loss(prediction_scores, bool_queries, mask)
+
 		return prediction_scores, prediction_loss, target
 	
 	def predict(self, query, head, label, feature, attrs, bboxes):
@@ -103,18 +106,22 @@ class MATnet(nn.Module):
 
 		return predictions, prediction_loss, selected_bbox
 	
-	def get_predictions_for_loss(self, prediction_scores, bool_queries):
+	def get_predictions_for_loss(self, prediction_scores, bool_queries, mask):
 		"""
-		:param prediction_scores: [b, query, b, proposal] masked with value=-100
+		:param prediction_scores: [b, query, b, proposal] masked with value=-1e8
 		:param bool_queries: mask for the length of the queries [b, query]
+		:param mask: boolean mask [b, query, b, proposal] with values as {True, False}
 		:return scores: score to use in the loss [b, b]
 		:return target: the target values to use during the loss calculation [b]
 		"""
 		device = torch.device("cuda:0" if self.linear_img.weight.is_cuda else "cpu")
 		batch_size = prediction_scores.shape[0]
 		num_queries = bool_queries.sum(dim=-1)		# [b]
+		mask_queries = bool_queries.unsqueeze(-1).eq(0)
 		
 		scores, _ = torch.max(prediction_scores, dim=-1) # [b, query, b]
+		# now pad scores with 0 and not with -1e8 in order to do the mean
+		scores = scores.masked_fill(mask_queries, 0) 
 		scores = torch.sum(scores, dim=1) / num_queries.unsqueeze(-1)   # [b, b]
 
 		target = torch.eye(batch_size, device=device)	# [b, b]
@@ -123,9 +130,9 @@ class MATnet(nn.Module):
 
 	def _get_predictions(self, q_feat, v_feat, concepts_similarity, mask, weight):
 		"""
-		:param q_feat: features of the queries [b, query, dim]
-		:param v_feat: visual features of the bounding boxes [b, proposal, dim]
-		:param concepts_similarity: concept similarity scores [b, query, b, proposal]
+		:param q_feat: features of the queries [b, query, dim]. pad with 0
+		:param v_feat: visual features of the bounding boxes [b, proposal, dim]. pad with 0
+		:param concepts_similarity: concept similarity scores [b, query, b, proposal]. pad with -1e8
 		:param mask: boolean mask [b, query, b, proposal] with values as {True, False}
 		:return predictions: [b, query, b, proposal]
 		"""
@@ -151,14 +158,14 @@ class MATnet(nn.Module):
 		# predictions = concepts_similarity
 
 		# mask
-		predictions = predictions.masked_fill(mask, -100)
+		predictions = predictions.masked_fill(mask, -1e8)
 
 		return predictions
 
 	def _get_concept_similarity(self, q_emb, k_emb, num_words, mask):
 		"""
-		:param q_emb: embedding of the queries words heads [b, query, words, dim]
-		:param k_emb: embedding of the bounding boxes classes [b, proposal, dim]
+		:param q_emb: embedding of the queries words heads [b, query, words, dim]. pad with 0
+		:param k_emb: embedding of the bounding boxes classes [b, proposal, dim]. pad with 0
 		:param num_words: number of words for each query [b, query]
 		:param mask: boolean mask [b, query, b, proposal] with values as {True, False}
 		:return scores: predicted scores [b, query, b, proposal]
@@ -175,11 +182,16 @@ class MATnet(nn.Module):
 				q_emb_ext = q_emb.unsqueeze(2).unsqueeze(2)	# [b, query, 1, 1, dim]
 				k_emb_ext = k_emb.unsqueeze(0).unsqueeze(0)	# [1, 1, b, proposal, dim]
 				scores = self.similarity_function(q_emb_ext, k_emb_ext)		# [b, query, b, proposal]
+				# mask
+				scores = scores.masked_fill(mask, -1e8)
 			elif self.cosine_similarity_strategy == 'max':
 				# select the score considering only the most similar words in a query with the labels
 				q_emb_ext = q_emb.unsqueeze(3).unsqueeze(3)	# [b, query, 1, 1, dim]
 				k_emb_ext = k_emb.unsqueeze(0).unsqueeze(0).unsqueeze(0)	# [1, 1, 1, b, proposal, dim]
 				scores_middle = self.similarity_function(q_emb_ext, k_emb_ext)	# [b, query, word, b, proposal]
+				# mask before selecting max values
+				scores_middle = scores_middle.masked_fill(mask.unsqueeze(2), -1e8)
+				# select best values
 				scores_prop_max, scores_prop_idx =  torch.max(scores_middle, dim=-1)	# [b, query, words, b]
 				scores_words_max, scores_words_idx =  torch.max(scores_prop_max, dim=2)	# [b, query, b]
 				index_best_word = scores_words_idx.unsqueeze(2).unsqueeze(-1)	# [b, query, 1, b, 1]
@@ -188,12 +200,9 @@ class MATnet(nn.Module):
 				print("Error, cosine_similarity_strategy '{}' not defined. ".format(self.cosine_similarity_strategy))
 				exit(1)
 			
-			# mask
-			scores = scores.masked_fill(mask, -100)
-
 		return scores
 
-	def _get_query_features(self, q_emb, q_length, norm, emb_dim):
+	def _get_query_features(self, q_emb, q_length, emb_dim, norm):
 		"""
 		:param: q_emb: embedding of each phrase
 		:param: q_length: length of each phrase
@@ -222,17 +231,36 @@ class MATnet(nn.Module):
 		# queries_x_norm = F.normalize(queries_x, p=norm, dim=-1)
 		return queries_x
 
-	def _get_query_features_att(self, q_emb, k_emb, eps=1e-5):
+	def _get_query_features_att(self, q_emb, k_emb, bool_queries, bool_proposals):
+		"""
+		:param: q_emb: embedding of each phrase [B, querys, words, dim]. pad with 0
+		:param: k_emb: embedding of box labels [B, proposals, dim]. pad qith 0
+		:param bool_queries: mask for queries [b, query]
+		:param bool_proposals: mask for queries [b, proposals]
+		:return: query embedding
+		"""
+		# generate masks
+		mask_queries = bool_queries.unsqueeze(-1).eq(0)						# [B, queries, 1]
+		mask_proposals = bool_proposals.unsqueeze(1).unsqueeze(1).eq(0)		# [B, 1, 1, proposals]
+
+
 		# q_emb [B, querys, Q, dim]
 		scale = 1.0 / np.sqrt(k_emb.size(-1))
-		att = torch.einsum('byqd,bkd ->byqk', q_emb, k_emb)
-		att = self.queries_softmax(att.mul_(scale))  # [B, querys, Q, K]
+		att = torch.einsum('byqd,bkd ->byqk', q_emb, k_emb)		# [B, queries, words, proposals]
+		# mask before softmax 
+		att = att.masked_fill(mask_proposals, -1e8)
+		att = self.queries_softmax(att.mul_(scale))  			# [B, querys, words, proposals] Pad with 0
 
-		q_max_att = torch.max(att, dim = 3).values  # [B, querys, Q]
-		q_max_norm_att = self.queries_softmax(q_max_att)
+		q_max_att = torch.max(att, dim=3).values  				# [B, querys, words]
+		# mask before softmax
+		q_max_att = q_max_att.masked_fill(mask_queries, -1e8)	
+		q_max_norm_att = self.queries_softmax(q_max_att)		# [B, querys, words] Pad with 0
 		# attended
 		p_emb = torch.einsum('byq,byqd -> byd', q_max_norm_att, q_emb)  # [B, querys, dim]
-		p_emb = self.queries_mlp(p_emb)
+		p_emb = self.queries_mlp(p_emb)									# [B, querys, dim]
+		
+		# mask
+		p_emb = p_emb.masked_fill(mask_queries, 0)
 
 		return p_emb
 
@@ -242,36 +270,45 @@ class MATnet(nn.Module):
 
 		:param boxes: A [b, proposal, 5] tensor
 		:param boxes_feat: A [b, proposal, fi] tensor
-		:param num_proposal: A [b] tensor
-		:return: A [b, proposal, fi + 5] tensor
+		:param bool_proposals: A [b, proposals] tensor
+		:return boxes_feat: A [b, proposal, fi + 5] tensor
 		"""
-		mask = bool_proposals.unsqueeze(-1)	# [b, proposals, 1]
+		mask = bool_proposals.unsqueeze(-1).eq(0)	# [b, proposals, 1]
 		# boxes_feat = F.normalize(boxes_feat, p=norm, dim=-1)
 		boxes_feat = torch.cat([boxes_feat, boxes], dim=-1)		# here there is also the area
 		boxes_feat = self.img_mlp(boxes_feat)
-		boxes_feat = boxes_feat.masked_fill(mask==0, 0)
+		boxes_feat = boxes_feat.masked_fill(mask, 0)
 		return boxes_feat
 
-	def _encode(self, query, label, attrs, head):
+	def _encode(self, query, label, attrs, head, bool_words, bool_proposals):
 		"""
 		:param query: query phrases [B, queries, words]
 		:param label: object labels, predicted by the detector [B, objects]
 		:param attrs: object attributes, predicted by the detector [B, objects]
 		:param head: query phrases head [B, heads]
-
+		:param bool_words: logic mask for words [B, query, words]
+		:param bool_proposals: logic mask for proposals [B, proposals]
 		:return: 	q_emb[B, queries, words, dim] for query word embedding;
 					k_emb[B, objects, dim] for object embedding
 					attr_emb[B, objects, dim] for attribute embedding
 					head_emb[B, heads, dim] for head word embedding;
 		"""
+		# params
+		mask_words = bool_words.unsqueeze(-1).eq(0)
+		mask_proposals = bool_proposals.unsqueeze(-1).eq(0)
 
 		q_emb = self.wv(query)
 		k_emb = self.wv(label)
-		attr_emb = self.wv(attrs)
-		head_emb = self.wv(query) # TODO: risolvi
-		return q_emb, k_emb, attr_emb, head_emb
+		# attr_emb = self.wv(attrs)
+		# head_emb = self.wv(query) # TODO: risolvi
+
+		# mask
+		q_emb = q_emb.masked_fill(mask_words, 0)
+		k_emb = k_emb.masked_fill(mask_proposals, 0)
+
+		return q_emb, k_emb
 	
-	def _encode_freezed(self, query, label, attrs, head):
+	def _encode_freezed(self, query, label, attrs, head, bool_words, bool_proposals):
 		"""
 		:param query: query phrases [B, queries, words]
 		:param label: object labels, predicted by the detector [B, objects]
@@ -283,11 +320,19 @@ class MATnet(nn.Module):
 					attr_emb[B, objects, dim] for attribute embedding
 					head_emb[B, heads, dim] for head word embedding;
 		"""
+		# params
+		mask_words = bool_words.unsqueeze(-1).eq(0)
+		mask_proposals = bool_proposals.unsqueeze(-1).eq(0)
 
 		q_emb = self.wv_freezed(query)
 		k_emb = self.wv_freezed(label)
 		# attr_emb = self.wv_freezed(attrs)
 		# head_emb = self.wv_freezed(query) # TODO: risolvi
+
+		# mask
+		q_emb = q_emb.masked_fill(mask_words, 0)
+		k_emb = k_emb.masked_fill(mask_proposals, 0)
+
 		return q_emb, k_emb
 
 
