@@ -158,7 +158,7 @@ def load_train_flickr30k(dataroot, img_id2idx, obj_detection, vgg = False, do_sp
 	"""
 	if do_spellchecker:
 		spell = SpellChecker()
-	spacy_nlp = get_spacy_nlp()
+	# spacy_nlp = get_spacy_nlp()
 	pattern_phrase = r'\[(.*?)\]'
 	pattern_no = r'\/EN\#(\d+)'
 	missing_entity_count = dict()
@@ -246,10 +246,10 @@ def load_train_flickr30k(dataroot, img_id2idx, obj_detection, vgg = False, do_sp
 						phrase = spell.correction(phrase)
 
 				# select heads. TODO: just first head of the query
-				tmp_head = ''
-				for chunk in spacy_nlp(phrase).noun_chunks:
-					tmp_head = chunk.root.text
-				head.append(tmp_head)
+				# tmp_head = ''
+				# for chunk in spacy_nlp(phrase).noun_chunks:
+					# tmp_head = chunk.root.text
+				# head.append(tmp_head)
 
 				query.append(phrase)
 
