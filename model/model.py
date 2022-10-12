@@ -30,12 +30,10 @@ class MATnet(nn.Module):
 		# NN image branch
 		self.linear_img = nn.Linear(20, 20)
 		self.img_mlp = MLP(self.feature_dim+5, self.emb_dim, [1024], F.leaky_relu)
-		self.img_fusion = MLP(2*self.emb_dim, self.emb_dim, [self.emb_dim,], F.leaky_relu)
 		# NN text branch
 		self.queries_rnn = nn.LSTM(300, self.emb_dim, num_layers=1, bidirectional=False, batch_first=False)
 		self.queries_mlp = MLP(self.emb_dim, self.emb_dim, [self.emb_dim], F.leaky_relu)
 		self.queries_softmax = nn.Softmax(dim = -1)
-		self.queries_fusion = MLP(2*self.emb_dim, self.emb_dim, [self.emb_dim,], F.leaky_relu)
 		
 
 	def forward(self, query, head, label, proposals_features, attrs, bboxes):
@@ -76,7 +74,7 @@ class MATnet(nn.Module):
 			# so use LSTM
 			q_feat = self._get_query_features(q_emb, num_words, 300, 1)
 		else:
-			q_feat = self._get_query_features_att(q_emb, k_emb, bool_queries, bool_proposals) # TODO FINISCI E CONTROLLA LA MASCHERA
+			q_feat = self._get_query_features_att(q_emb, k_emb, bool_queries, bool_proposals) 
 
 		# get similarity scores
 		# NOTE: everything from here is masked with -1e8 and not 0.
@@ -145,13 +143,8 @@ class MATnet(nn.Module):
 		q_feat_ext = q_feat.unsqueeze(2).unsqueeze(2).repeat(1, 1, batch_size, n_proposals, 1)	# [b, query, b, proposal, dim]
 		v_feat_ext = v_feat.unsqueeze(0).unsqueeze(0).repeat(batch_size, n_queries, 1, 1, 1)	# [b, query, b, proposal, dim]
 
-		# new representations
-		rep_concat = torch.cat([q_feat_ext, v_feat_ext], dim=-1)	# [b, query, b, proposal, 2*dim]
-		new_q_feat_ext = self.queries_fusion(rep_concat)	# [b, query, b, proposal, dim]
-		new_v_feat_ext = self.img_fusion(rep_concat)	# [b, query, b, proposal, dim]
-
 		# calculate similarity
-		predictions_qk = self.similarity_function(new_q_feat_ext, new_v_feat_ext)		# [b, query, b, proposal]
+		predictions_qk = self.similarity_function(q_feat_ext, v_feat_ext)		# [b, query, b, proposal]
 
 		# merge the predictions with the concept similarity scores
 		predictions = weight*predictions_qk + (1-weight)*concepts_similarity
