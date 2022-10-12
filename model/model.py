@@ -81,6 +81,7 @@ class MATnet(nn.Module):
 		concepts_similarity = self._get_concept_similarity(q_emb_freezed, k_emb_freezed, num_words, mask) # TODO check attention mask
 		prediction_scores = self._get_predictions(q_feat, v_feat, concepts_similarity, mask, self.prediction_weight)
 		prediction_loss, target = self.get_predictions_for_loss(prediction_scores, bool_queries, mask)
+
 		return prediction_scores, prediction_loss, target
 	
 	def predict(self, query, head, label, feature, attrs, bboxes):

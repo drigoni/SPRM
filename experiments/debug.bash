@@ -2,7 +2,7 @@
 
 # params
 PROJECT_HOME=/ceph/hpc/home/eudavider/repository/weakvg
-BATCH_SIZE=1
+BATCH_SIZE=2
 DEVICE='cuda'
 COSINE_SIMILARITY_STRATEGY='mean'
 LOSS_STRATEGY='ce'

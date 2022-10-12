@@ -28,10 +28,10 @@ def train(model, loss_function, train_loader, test_loader, args, lr = 1e-4, epoc
 
 	model = model.float()
 	optimizer = torch.optim.Adam(model.parameters(), lr = lr)
-	
-	print("--- Evaluation Before Training...")
-	score = evaluate(test_loader, model, device_str)
-	print("Eval score on test dataset:", score)
+
+	# print("--- Evaluation Before Training...")
+	# score = evaluate(test_loader, model, device_str)
+	# print("Eval score on test dataset:", score)
 
 	for epoch in range(epochs):
 		print("--- EPOCH", epoch)
