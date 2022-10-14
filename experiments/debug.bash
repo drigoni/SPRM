@@ -17,4 +17,4 @@ python ${PROJECT_HOME}/main.py  --batch ${BATCH_SIZE} \
                                 --cosine_similarity_strategy ${COSINE_SIMILARITY_STRATEGY} \
                                 --loss_strategy ${LOSS_STRATEGY} \
                                 --epochs ${EPOCHS} \
-                                --use_att_for_query \
+                                --use_mean_in_loss \

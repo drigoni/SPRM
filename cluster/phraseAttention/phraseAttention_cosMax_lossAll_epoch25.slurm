@@ -12,7 +12,7 @@
 #SBATCH --ntasks-per-node=1                         # total number of tasks per node
 #SBATCH --cpus-per-task=16		                    # cpu-cores per task (>1 if multi-threaded tasks)
 #SBATCH --gpus-per-node=1                           # number of gpus per node
-#SBATCH --array=0-4
+#SBATCH --array=1-3
 ## #SBATCH --exclusive								
 #---- MORE COMMANDS
 #----#SBATCH --mail-type=begin                           # send email when job begins

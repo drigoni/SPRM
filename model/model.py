@@ -14,12 +14,12 @@ class MATnet(nn.Module):
 		"""
 		super(MATnet, self).__init__()
 		# params 
-		self.similarity_function = nn.CosineSimilarity(dim=-1)
-		self.emb_dim = args.emb_dim
-		self.feature_dim = args.feature_dim
-		self.cosine_similarity_strategy = args.cosine_similarity_strategy	
-		self.prediction_weight = args.cosine_weight
-		self.use_att_for_query = args.use_att_for_query
+		self.EMB_DIM = args.emb_dim
+		self.IMG_FEATURES_FIM = args.feature_dim
+		self.COSINE_SIMILARITY_STRATEGY = args.cosine_similarity_strategy	
+		self.PREDICTION_WEIGHT = args.cosine_weight
+		self.USE_ATT_FOR_QUERY = args.use_att_for_query
+		self.USE_MEAN_IN_LOSS = args.use_mean_in_loss
 
 		# other NN
 		self.wordemb = wordvec
@@ -29,11 +29,13 @@ class MATnet(nn.Module):
 
 		# NN image branch
 		self.linear_img = nn.Linear(20, 20)
-		self.img_mlp = MLP(self.feature_dim+5, self.emb_dim, [1024], F.leaky_relu)
+		self.img_mlp = MLP(self.IMG_FEATURES_FIM+5, self.EMB_DIM, [1024], F.leaky_relu)
 		# NN text branch
-		self.queries_rnn = nn.LSTM(300, self.emb_dim, num_layers=1, bidirectional=False, batch_first=False)
-		self.queries_mlp = MLP(self.emb_dim, self.emb_dim, [self.emb_dim], F.leaky_relu)
+		self.queries_rnn = nn.LSTM(self.EMB_DIM, self.EMB_DIM, num_layers=1, bidirectional=False, batch_first=False)
+		self.queries_mlp = MLP(self.EMB_DIM, self.EMB_DIM, [self.EMB_DIM], F.leaky_relu)
 		self.queries_softmax = nn.Softmax(dim = -1)
+
+		self.similarity_function = nn.CosineSimilarity(dim=-1)
 		
 
 	def forward(self, query, head, label, proposals_features, attrs, bboxes):
@@ -70,17 +72,17 @@ class MATnet(nn.Module):
 		q_emb_freezed, k_emb_freezed = self._encode_freezed(query, label, attrs, head, bool_words, bool_proposals)
 		# get features. NOTE: inputs padded with 0
 		v_feat = self._get_image_features(bboxes, proposals_features, bool_proposals, 1)
-		if self.use_att_for_query is False:
+		if self.USE_ATT_FOR_QUERY is False:
 			# so use LSTM
-			q_feat = self._get_query_features(q_emb, num_words, 300, 1)
+			q_feat = self._get_query_features(q_emb, num_words, self.EMB_DIM, 1)
 		else:
 			q_feat = self._get_query_features_att(q_emb, k_emb, bool_queries, bool_proposals) 
 
 		# get similarity scores
 		# NOTE: everything from here is masked with -1e8 and not 0.
 		concepts_similarity = self._get_concept_similarity(q_emb_freezed, k_emb_freezed, num_words, mask)
-		prediction_scores = self._get_predictions(q_feat, v_feat, concepts_similarity, mask, self.prediction_weight)
-		prediction_loss, target = self.get_predictions_for_loss(prediction_scores, bool_queries, mask)
+		prediction_scores = self._get_predictions(q_feat, v_feat, concepts_similarity, mask, self.PREDICTION_WEIGHT)
+		prediction_loss, target = self.get_predictions_for_loss(prediction_scores, bool_queries, bool_proposals, mask)
 
 		return prediction_scores, prediction_loss, target
 	
@@ -104,10 +106,11 @@ class MATnet(nn.Module):
 
 		return predictions, prediction_loss, selected_bbox
 	
-	def get_predictions_for_loss(self, prediction_scores, bool_queries, mask):
+	def get_predictions_for_loss(self, prediction_scores, bool_queries, bool_proposals, mask):
 		"""
 		:param prediction_scores: [b, query, b, proposal] masked with value=-1e8
 		:param bool_queries: mask for the length of the queries [b, query]
+		:param bool_proposals: mask for queries [b, proposals]
 		:param mask: boolean mask [b, query, b, proposal] with values as {True, False}
 		:return scores: score to use in the loss [b, b]
 		:return target: the target values to use during the loss calculation [b]
@@ -117,10 +120,22 @@ class MATnet(nn.Module):
 		num_queries = bool_queries.sum(dim=-1)		# [b]
 		mask_queries = bool_queries.unsqueeze(-1).eq(0)
 		
-		scores, _ = torch.max(prediction_scores, dim=-1) # [b, query, b]
+		if self.USE_MEAN_IN_LOSS is False:
+			scores, _ = torch.max(prediction_scores, dim=-1) 					# [b, query, b]
+		else:
+			# we need to mask negatives values otherwise it make learning pushing in the opposite direction each point that should not be related.
+			# scores = prediction_scores.clamp(min=0)								# [b, query, b, proposals]
+			scores = prediction_scores												# [b, query, b, proposals]
+			# mask boxes
+			mask_proposals = bool_proposals.unsqueeze(0).unsqueeze(0).eq(0)		# [1, 1, b, proposals]
+			scores = scores.masked_fill(mask_proposals, 0)						# [b, query, b, proposals]
+			# at this point, everything to ignore is at 0.
+			num_proposals_to_consider = scores.greater(0).type(torch.long).sum(-1)	# [b, query, b]
+			scores = scores.sum(dim=-1) / (num_proposals_to_consider + 1e-8) 				# [b, query, b]
+
 		# now pad scores with 0 and not with -1e8 in order to do the mean
 		scores = scores.masked_fill(mask_queries, 0) 
-		scores = torch.sum(scores, dim=1) / num_queries.unsqueeze(-1)   # [b, b]
+		scores = scores.sum(dim=1) / num_queries.unsqueeze(-1)   # [b, b]
 
 		target = torch.eye(batch_size, device=device)	# [b, b]
 		target = torch.argmax(target, dim=-1)	# [b]
@@ -170,14 +185,14 @@ class MATnet(nn.Module):
 
 		# calculate similarity scores
 		with torch.no_grad():
-			if self.cosine_similarity_strategy == 'mean':
+			if self.COSINE_SIMILARITY_STRATEGY == 'mean':
 				q_emb = torch.sum(q_emb, dim=2) / num_words.unsqueeze(-1)		# [b, query, dim]
 				q_emb_ext = q_emb.unsqueeze(2).unsqueeze(2)	# [b, query, 1, 1, dim]
 				k_emb_ext = k_emb.unsqueeze(0).unsqueeze(0)	# [1, 1, b, proposal, dim]
 				scores = self.similarity_function(q_emb_ext, k_emb_ext)		# [b, query, b, proposal]
 				# mask
 				scores = scores.masked_fill(mask, -1e8)
-			elif self.cosine_similarity_strategy == 'max':
+			elif self.COSINE_SIMILARITY_STRATEGY == 'max':
 				# select the score considering only the most similar words in a query with the labels
 				q_emb_ext = q_emb.unsqueeze(3).unsqueeze(3)	# [b, query, 1, 1, dim]
 				k_emb_ext = k_emb.unsqueeze(0).unsqueeze(0).unsqueeze(0)	# [1, 1, 1, b, proposal, dim]
@@ -190,7 +205,7 @@ class MATnet(nn.Module):
 				index_best_word = scores_words_idx.unsqueeze(2).unsqueeze(-1)	# [b, query, 1, b, 1]
 				scores = torch.gather(scores_middle, 2, index_best_word).squeeze(2)	# [b, query, b, proposal]
 			else:
-				print("Error, cosine_similarity_strategy '{}' not defined. ".format(self.cosine_similarity_strategy))
+				print("Error, cosine_similarity_strategy '{}' not defined. ".format(self.COSINE_SIMILARITY_STRATEGY))
 				exit(1)
 			
 		return scores
