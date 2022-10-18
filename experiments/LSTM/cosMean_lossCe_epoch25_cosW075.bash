@@ -18,4 +18,3 @@ python ${PROJECT_HOME}/main.py  --batch ${BATCH_SIZE} \
                                 --save_name ${MODEL_NAME} \
                                 --cosine_similarity_strategy ${COSINE_SIMILARITY_STRATEGY} \
                                 --loss_strategy ${LOSS_STRATEGY} \
-                                --use_mean_in_loss
