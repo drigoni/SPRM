@@ -29,7 +29,7 @@ class MATnet(nn.Module):
 
 		# NN image branch
 		self.linear_img = nn.Linear(20, 20)
-		self.img_mlp = MLP(self.IMG_FEATURES_FIM+5, self.EMB_DIM, [1024], F.leaky_relu)
+		self.img_mlp = MLP(self.IMG_FEATURES_FIM+5 + self.EMB_DIM, self.EMB_DIM, [1024], F.leaky_relu)
 		# NN text branch
 		self.queries_rnn = nn.LSTM(self.EMB_DIM, self.EMB_DIM, num_layers=1, bidirectional=False, batch_first=False)
 		self.queries_mlp = MLP(self.EMB_DIM, self.EMB_DIM, [self.EMB_DIM], F.leaky_relu)
@@ -71,7 +71,7 @@ class MATnet(nn.Module):
 		q_emb, k_emb = self._encode(query, label, attrs, head, bool_words, bool_proposals)
 		q_emb_freezed, k_emb_freezed = self._encode_freezed(query, label, attrs, head, bool_words, bool_proposals)
 		# get features. NOTE: inputs padded with 0
-		v_feat = self._get_image_features(bboxes, proposals_features, bool_proposals, 1)
+		v_feat = self._get_image_features(bboxes, proposals_features, k_emb, bool_proposals, 1)
 		if self.USE_ATT_FOR_QUERY is False:
 			# so use LSTM
 			q_feat = self._get_query_features(q_emb, num_words, self.EMB_DIM, 1)
@@ -82,6 +82,14 @@ class MATnet(nn.Module):
 		# NOTE: everything from here is masked with -1e8 and not 0.
 		concepts_similarity = self._get_concept_similarity(q_emb_freezed, k_emb_freezed, num_words, mask)
 		prediction_scores = self._get_predictions(q_feat, v_feat, concepts_similarity, mask, self.PREDICTION_WEIGHT)
+
+		# attention sulle phrases
+		# attmap = torch.einsum('avd, bqd -> baqv', k_emb, p_emb)  # [B1, K, dim] x [B2, querys, dim] => [B2, B1, querys, K]
+		# attmap_sm = self.softmax(attmap)  # [B2, B1, querys, K]
+		# att_obj_sum = torch.sum(attmap_sm, dim = -2)  # [B2, B1, K]
+		# maxatt, _ = attmap.max(dim = -1)  # [B1, B2, querys]: B1th sentence to B2th image
+		# logits = torch.sum(maxatt, dim = -1).div(num_query.unsqueeze(1).expand(maxatt.size(0), maxatt.size(1)))  # [B1, B2]: B1th sentence to B2th image
+
 		prediction_loss, target = self.get_predictions_for_loss(prediction_scores, bool_queries, bool_proposals, mask)
 
 		return prediction_scores, prediction_loss, target
@@ -272,18 +280,19 @@ class MATnet(nn.Module):
 
 		return p_emb
 
-	def _get_image_features(self, boxes, boxes_feat, bool_proposals, norm):
+	def _get_image_features(self, boxes, boxes_feat, k_emb, bool_proposals,  norm):
 		"""
 		Normalize bounding box features and concatenate its spacial features (position and area).
 
 		:param boxes: A [b, proposal, 5] tensor
 		:param boxes_feat: A [b, proposal, fi] tensor
+		:param k_emb: A [b, proposals, dim] tensor
 		:param bool_proposals: A [b, proposals] tensor
 		:return boxes_feat: A [b, proposal, fi + 5] tensor
 		"""
 		mask = bool_proposals.unsqueeze(-1).eq(0)	# [b, proposals, 1]
 		# boxes_feat = F.normalize(boxes_feat, p=norm, dim=-1)
-		boxes_feat = torch.cat([boxes_feat, boxes], dim=-1)		# here there is also the area
+		boxes_feat = torch.cat([boxes_feat, boxes, k_emb], dim=-1)		# here there is also the area
 		boxes_feat = self.img_mlp(boxes_feat)
 		boxes_feat = boxes_feat.masked_fill(mask, 0)
 		return boxes_feat
