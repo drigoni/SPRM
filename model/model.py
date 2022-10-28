@@ -163,7 +163,7 @@ class MATnet(nn.Module):
 		predictions_qk = self.similarity_function(q_feat_ext, v_feat_ext)		# [b, query, b, proposal]
 
 		# merge the predictions with the concept similarity scores
-		predictions = weight*predictions_qk + (1-weight)*concepts_similarity
+		predictions = weight*F.softmax(predictions_qk, dim=-1) + (1-weight)*F.softmax(concepts_similarity, dim=-1)
 		# predictions = concepts_similarity
 
 		# mask
