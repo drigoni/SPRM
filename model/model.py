@@ -109,7 +109,7 @@ class MATnet(nn.Module):
 	
 	def get_predictions_for_loss(self, prediction_scores, bool_queries, bool_proposals, mask):
 		"""
-		:param prediction_scores: [b, query, b, proposal] masked with value=-1e8
+		:param prediction_scores: [b, query, b, proposal] masked with value=0
 		:param bool_queries: mask for the length of the queries [b, query]
 		:param bool_proposals: mask for queries [b, proposals]
 		:param mask: boolean mask [b, query, b, proposal] with values as {True, False}
@@ -161,13 +161,14 @@ class MATnet(nn.Module):
 
 		# calculate similarity
 		predictions_qk = self.similarity_function(q_feat_ext, v_feat_ext)		# [b, query, b, proposal]
+		predictions_qk = predictions_qk.masked_fill(mask, -1e8)					# [b, query, b, proposal] pad with -1e8
 
 		# merge the predictions with the concept similarity scores
 		predictions = weight*F.softmax(predictions_qk, dim=-1) + (1-weight)*F.softmax(concepts_similarity, dim=-1)
 		# predictions = concepts_similarity
 
 		# mask
-		predictions = predictions.masked_fill(mask, -1e8)
+		predictions = predictions.masked_fill(mask, 0)
 
 		return predictions
 
