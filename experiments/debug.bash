@@ -17,4 +17,4 @@ python ${PROJECT_HOME}/main.py  --batch ${BATCH_SIZE} \
                                 --cosine_similarity_strategy ${COSINE_SIMILARITY_STRATEGY} \
                                 --loss_strategy ${LOSS_STRATEGY} \
                                 --epochs ${EPOCHS} \
-                                --emb_dim 500
+                                --emb_dim 300
