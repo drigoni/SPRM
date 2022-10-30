@@ -77,6 +77,7 @@ def train(model, loss_function, train_loader, test_loader, args, lr = 1e-4, epoc
 
 		if score > best_score:
 			best_model = copy.deepcopy(model)
+			best_score = score
 
 		wandb.log({	"loss": total_loss / n_batches,
 					"acc_val": score
