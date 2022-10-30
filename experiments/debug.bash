@@ -2,7 +2,7 @@
 
 # params
 PROJECT_HOME=/ceph/hpc/home/eudavider/repository/weakvg
-BATCH_SIZE=2
+BATCH_SIZE=4
 DEVICE='cuda'
 COSINE_SIMILARITY_STRATEGY='mean'
 LOSS_STRATEGY='ce'
@@ -17,4 +17,5 @@ python ${PROJECT_HOME}/main.py  --batch ${BATCH_SIZE} \
                                 --cosine_similarity_strategy ${COSINE_SIMILARITY_STRATEGY} \
                                 --loss_strategy ${LOSS_STRATEGY} \
                                 --epochs ${EPOCHS} \
-                                --emb_dim 300
+                                --emb_dim 300 \
+                                --MATnet

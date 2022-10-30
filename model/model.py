@@ -6,17 +6,17 @@ import torch.nn.functional as F
 import torch.nn.utils.rnn as rnn
 from typing import Dict, List, Callable
 
-class MATnet(nn.Module):
+class ConceptNet(nn.Module):
 	def __init__(self, wordvec, args):
 		"""
 		:param wordvec: embeddings
 		:param args: args from command line
 		"""
-		super(MATnet, self).__init__()
+		super(ConceptNet, self).__init__()
 		# params 
 		self.EMB_DIM = args.emb_dim
 		self.WORD_EMB_DIM = args.word_emb_dim
-		self.IMG_FEATURES_FIM = args.feature_dim
+		self.IMG_FEATURES_DIM = args.feature_dim
 		self.COSINE_SIMILARITY_STRATEGY = args.cosine_similarity_strategy	
 		self.PREDICTION_WEIGHT = args.cosine_weight
 		self.USE_ATT_FOR_QUERY = args.use_att_for_query
@@ -30,7 +30,7 @@ class MATnet(nn.Module):
 
 		# NN image branch
 		self.linear_img = nn.Linear(20, 20)
-		self.img_mlp = MLP(self.IMG_FEATURES_FIM + 5, self.EMB_DIM, [], F.leaky_relu)
+		self.img_mlp = MLP(self.IMG_FEATURES_DIM + 5, self.EMB_DIM, [], F.leaky_relu)
 		# NN text branch
 		if self.USE_ATT_FOR_QUERY is False:
 			self.queries_rnn = nn.LSTM(self.WORD_EMB_DIM, self.EMB_DIM, num_layers=1, bidirectional=False, batch_first=False)

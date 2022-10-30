@@ -6,7 +6,8 @@ from torch.utils.data import DataLoader
 import wandb
 
 from model.dataset import Flickr30dataset
-from model.model import MATnet
+from model.model import ConceptNet
+from model.model_MATnet import MATnet
 from model.train_model import evaluate
 from utils.utils import load_vocabulary, init_net
 
@@ -30,6 +31,7 @@ def parse_args():
 	parser.add_argument('--cosine_weight', type=float, default=0.5)
 	parser.add_argument('--use_att_for_query', action = 'store_true', help = "Disable LSTM for query features and use attention.")
 	parser.add_argument('--use_mean_in_loss', action = 'store_true', help = "Consider all the couple <query, box> in the loss calculation.")
+	parser.add_argument('--MATnet', action = 'store_true', help = "True when we want to use the original model.")
 
 	# debug mode
 	parser.add_argument('--debug', action = 'store_true')
@@ -43,7 +45,10 @@ if __name__ == '__main__':
 	test_dset = Flickr30dataset(wordEmbedding, "test")
 
 	test_loader = DataLoader(test_dset, batch_size = 32, num_workers = 4, drop_last = True, shuffle = True)
-	model = MATnet(wordEmbedding, args)
+	if args.MATnet:
+		model = MATnet(wordEmbedding, args)
+	else:
+		model = ConceptNet(wordEmbedding, args)
 	device = torch.device("cuda:0" if torch.cuda.is_available() and args.device == 'cuda' else "cpu")
 	use_gpu = torch.cuda.is_available()
 	if use_gpu:

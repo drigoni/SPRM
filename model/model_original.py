@@ -114,39 +114,6 @@ class MATnet(nn.Module):
 		target = torch.eye(n_obj).cuda()  # [b, b]
 		return logits, target, att_obj_sum
 
-	def forward_embedding(self, query, label, num_obj, num_query):
-		"""
-		:return: anchor, positive, negative
-		"""
-
-		q_emb, k_emb = self._encode(query, label)  # q: [B, querys, Q, dim] , [B, K, dim]
-
-		scale = 1.0 / np.sqrt(q_emb.size(3))
-		att = torch.einsum('byqd,bkd ->byqk', q_emb, k_emb)
-		mask = (att == 0)
-		att.masked_fill_(mask, -float('inf'))
-		att = self.softmax(att.mul_(scale))  # [B, querys, Q, K]
-		att[torch.isnan(att)] = 0
-
-		# embedding of every phrase with regard to the labels
-		q_max_att = torch.max(att, dim = 3).values  # [B, querys, Q]
-		q_max_norm_att = q_max_att.div(q_max_att.sum(dim = 2, keepdim = True))  # [B, querys, Q]
-		p_emb = torch.einsum('byq,byqd -> byd', q_max_norm_att, q_emb)  # [B, querys, dim]
-
-		i_att = torch.einsum('bkd, byd -> byk', k_emb,
-							 p_emb)  # [B, querys, K, dim] x [B, querys, dim] => [B, querys, K]
-		i_emb = torch.einsum('byk, bykd -> byd', i_att,
-							 k_emb)  # [B, querys, K] x [B, queys, K, dim] -> [B, querys, dim]
-
-		random_idx = [i for i in range(i_emb.size(0))]
-		random.shuffle(random_idx)
-		shuffle_i_emb = i_emb[random_idx]
-
-		anchor = torch.cat(tuple(p[:n, :] for p, n in zip(p_emb, num_query)), 0)  # [total_query, dim]
-		positive = torch.cat(tuple(i[:n, :] for i, n in zip(i_emb, num_query)), 0)
-		negative = torch.cat(tuple(i[:n, :] for i, n in zip(shuffle_i_emb, num_query)), 0)
-
-		return anchor, positive, negative
 
 	def predict(self, idx, query, label, feature, attrs, num_obj, num_query, bboxes = None):
 		p_emb, k_emb = self._encode_pk(query, label, feature, attrs)
