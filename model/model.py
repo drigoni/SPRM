@@ -30,13 +30,13 @@ class MATnet(nn.Module):
 
 		# NN image branch
 		self.linear_img = nn.Linear(20, 20)
-		# self.img_mlp = MLP(self.IMG_FEATURES_FIM + 5 + self.EMB_DIM, self.EMB_DIM, [1024], F.leaky_relu)
-		# self.img_mlp = MLP(self.IMG_FEATURES_FIM + 5 + self.EMB_DIM, self.EMB_DIM, [], F.leaky_relu)
 		self.img_mlp = MLP(self.IMG_FEATURES_FIM + 5, self.EMB_DIM, [], F.leaky_relu)
 		# NN text branch
-		self.queries_rnn = nn.LSTM(self.WORD_EMB_DIM, self.EMB_DIM, num_layers=1, bidirectional=False, batch_first=False)
-		self.queries_mlp = MLP(self.WORD_EMB_DIM, self.EMB_DIM, [self.EMB_DIM], F.leaky_relu)
-		self.queries_softmax = nn.Softmax(dim = -1)
+		if self.USE_ATT_FOR_QUERY is False:
+			self.queries_rnn = nn.LSTM(self.WORD_EMB_DIM, self.EMB_DIM, num_layers=1, bidirectional=False, batch_first=False)
+		else:
+			self.queries_mlp = MLP(self.WORD_EMB_DIM, self.EMB_DIM, [self.EMB_DIM], F.leaky_relu)
+			self.queries_softmax = nn.Softmax(dim = -1)
 
 		self.similarity_function = nn.CosineSimilarity(dim=-1)
 		

@@ -85,8 +85,15 @@ def weights_init(m):
 
 
 def init_net(net, net_file):
+	data = torch.load(net_file)
 	if net_file:
-		net.load_state_dict(torch.load(net_file))
+		current_keys = set(net.state_dict().keys())
+		loaded_keys = set(data.keys())
+		intersection_keys = current_keys.intersection(loaded_keys)
+		if not (len(current_keys)  == len(loaded_keys)  == len(intersection_keys)):
+			print("Keys found: {}.".format(intersection_keys))
+			print("Keys not found: {}.".format(current_keys.difference(loaded_keys)))
+		net.load_state_dict(data)
 	else:
 		net.apply(weights_init)
 
