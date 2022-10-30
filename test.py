@@ -22,12 +22,14 @@ def parse_args():
 	# model params
 	parser.add_argument('--cosine_similarity_strategy', type= str, default='mean',
 						choices=['mean', 'max'])
-	parser.add_argument('--loss_strategy', type= str, default='luca',
+	parser.add_argument('--loss_strategy', type= str, default='ce',
 						choices=['luca', 'all', 'ce'])
 	parser.add_argument('--emb_dim', type= int, default=300)
+	parser.add_argument('--word_emb_dim', type= int, default=300)
 	parser.add_argument('--feature_dim', type= int, default=2048)
 	parser.add_argument('--cosine_weight', type=float, default=0.5)
-	parser.add_argument('--use_att_for_query', action = 'store_true', help = "disable LSTM for query features and use attention")
+	parser.add_argument('--use_att_for_query', action = 'store_true', help = "Disable LSTM for query features and use attention.")
+	parser.add_argument('--use_mean_in_loss', action = 'store_true', help = "Consider all the couple <query, box> in the loss calculation.")
 
 	# debug mode
 	parser.add_argument('--debug', action = 'store_true')
@@ -37,9 +39,6 @@ def parse_args():
 
 if __name__ == '__main__':
 	args = parse_args()
-	# wandb.init(project="weakvg", entity="drigoni")
-	# wandb.config = vars(args)
-
 	wordEmbedding = load_vocabulary("data/glove/glove.6B.300d.txt")
 	test_dset = Flickr30dataset(wordEmbedding, "test")
 

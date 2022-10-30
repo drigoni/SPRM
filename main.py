@@ -83,6 +83,6 @@ if __name__ == '__main__':
 		else:
 			train_dset = Flickr30dataset(wordEmbedding, "train")
 		train_loader = DataLoader(train_dset, batch_size = args.batch, num_workers = 4, drop_last = True, shuffle = True)
-		train(model, loss, train_loader, test_loader, args, lr = args.lr, epochs = args.epochs, device_str=args.device)
-		torch.save(model.cpu().state_dict(), save_path)
+		best_model = train(model, loss, train_loader, test_loader, args, lr = args.lr, epochs = args.epochs, device_str=args.device)
+		torch.save(best_model.cpu().state_dict(), save_path)
 		print("save model to", save_path)

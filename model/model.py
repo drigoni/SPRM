@@ -30,7 +30,9 @@ class MATnet(nn.Module):
 
 		# NN image branch
 		self.linear_img = nn.Linear(20, 20)
-		self.img_mlp = MLP(self.IMG_FEATURES_FIM + 5 + self.EMB_DIM, self.EMB_DIM, [1024], F.leaky_relu)
+		# self.img_mlp = MLP(self.IMG_FEATURES_FIM + 5 + self.EMB_DIM, self.EMB_DIM, [1024], F.leaky_relu)
+		# self.img_mlp = MLP(self.IMG_FEATURES_FIM + 5 + self.EMB_DIM, self.EMB_DIM, [], F.leaky_relu)
+		self.img_mlp = MLP(self.IMG_FEATURES_FIM + 5, self.EMB_DIM, [], F.leaky_relu)
 		# NN text branch
 		self.queries_rnn = nn.LSTM(self.WORD_EMB_DIM, self.EMB_DIM, num_layers=1, bidirectional=False, batch_first=False)
 		self.queries_mlp = MLP(self.WORD_EMB_DIM, self.EMB_DIM, [self.EMB_DIM], F.leaky_relu)
@@ -294,8 +296,10 @@ class MATnet(nn.Module):
 		"""
 		mask = bool_proposals.unsqueeze(-1).eq(0)	# [b, proposals, 1]
 		# boxes_feat = F.normalize(boxes_feat, p=norm, dim=-1)
-		boxes_feat = torch.cat([boxes_feat, boxes, k_emb], dim=-1)		# here there is also the area
+		# boxes_feat = torch.cat([boxes_feat, boxes, k_emb], dim=-1)		# here there is also the area
+		boxes_feat = torch.cat([boxes_feat, boxes], dim=-1)		# here there is also the area
 		boxes_feat = self.img_mlp(boxes_feat)
+		boxes_feat = boxes_feat + k_emb
 		boxes_feat = boxes_feat.masked_fill(mask, 0)
 		return boxes_feat
 

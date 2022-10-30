@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 import wandb
+import copy
 
 from utils.evaluator import Evaluator
 from utils.utils import union_target
@@ -33,6 +34,9 @@ def train(model, loss_function, train_loader, test_loader, args, lr = 1e-4, epoc
 	# score = evaluate(test_loader, model, device_str)
 	# print("Eval score on test dataset:", score)
 
+	# params for best model
+	best_model = None
+	best_score = 0
 	for epoch in range(epochs):
 		print("--- EPOCH", epoch)
 		t = time.time()
@@ -71,9 +75,13 @@ def train(model, loss_function, train_loader, test_loader, args, lr = 1e-4, epoc
 		score = evaluate(test_loader, model, device_str)
 		print("Evaluation -> time: {} | score: {} .".format(time.time() - t2, score))
 
+		if score > best_score:
+			best_model = copy.deepcopy(model)
+
 		wandb.log({	"loss": total_loss / n_batches,
 					"acc_val": score
 					})
+	return best_model
 
 
 def evaluate(test_loader, model, device_str='cuda'):
