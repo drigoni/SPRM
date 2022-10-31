@@ -72,15 +72,16 @@ def train(model, loss_function, train_loader, test_loader, args, lr = 1e-4, epoc
 
 		# evaluate
 		t2 = time.time()
-		score = evaluate(test_loader, model, device_str)
-		print("Evaluation -> time: {} | score: {} .".format(time.time() - t2, score))
+		score, point_game_score = evaluate(test_loader, model, device_str)
+		print("Evaluation -> time: {} | score: {}   point_game_score: {} .".format(time.time() - t2, score, point_game_score))
 
 		if score > best_score:
 			best_model = copy.deepcopy(model)
 			best_score = score
 
 		wandb.log({	"loss": total_loss / n_batches,
-					"acc_val": score
+					"acc_val": score,
+					"point_acc_val": point_game_score
 					})
 	return best_model
 
@@ -106,8 +107,8 @@ def evaluate(test_loader, model, device_str='cuda'):
 		target_bboxes_list += target_bboxes.cpu().tolist()
 		num_query_list += num_query.cpu().tolist()
 	
-	score = evaluate_helper(pred_bboxes_list, target_bboxes_list, num_query_list)
-	return score
+	score, point_game_score = evaluate_helper(pred_bboxes_list, target_bboxes_list, num_query_list)
+	return score, point_game_score
 
 
 def evaluate_helper(pred_bboxes, target_bboxes, num_query):
@@ -126,5 +127,5 @@ def evaluate_helper(pred_bboxes, target_bboxes, num_query):
 			# print("nq: ", nq)
 			# exit(0)
 
-	accuracy, _ = evaluator.evaluate(pred_list, gtbox_list)  # [query, 4]
-	return accuracy
+	accuracy, _, point_game_accuracy= evaluator.evaluate(pred_list, gtbox_list)  # [query, 4]
+	return accuracy, point_game_accuracy

@@ -58,8 +58,8 @@ if __name__ == '__main__':
 	model = model.to(device)
 	model.eval()
 
-	score = evaluate(test_loader, model)
-	print("Evaluation localization score:", score)
+	score, point_game_score = evaluate(test_loader, model)
+	print("Evaluation Accuracy: {} ,   Evaluation point game accuracy: {} .", score, point_game_score)
 
 	# wandb.log({"acc_test": score})
 

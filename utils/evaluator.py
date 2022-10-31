@@ -59,7 +59,60 @@ class Evaluator(object):
 
 		matches = len([1 for iou in iouList if iou >= iouThreshold]);
 		accuracy = matches * 1.0 / len(iouList);
-		return accuracy;
+		return accuracy
+
+
+	def point_game_accuracy(self, predictedBoxList, gtBoxList):
+		""" Computes list of areas of IoU for all given instances.
+		Parameters
+		----------
+		predictedBoxList : list
+			[[x,y,w,h],[x,y,w,h],[x,y,w,h],...]
+			List of predicted bounding box instances [x,y,w,h] for each query instance.
+			x and y are the (x,y) coordinates of the top-left of the bounding box for the query term
+			w and h are the width and height of the bounding box for the query test
+		gtBoxList : list
+			Same as above, but for ground truth bounding boxes. Must be the same length as predictedBoxList
+		Returns
+		-------
+		point game accuracy : float
+			Overall point game accuracy (or recall to be more precise).
+			Proportion of predicted boxes that overlaps with the ground truth boxes.
+		"""
+		assert len(predictedBoxList) == len(gtBoxList), \
+			"The list of predicted bounding boxes ({}) should be the same size as the list of ground truth bounding boxes ({})." \
+				.format(len(predictedBoxList), len(gtBoxList))
+
+		# (box1_left_x, box1_top_y, box1_right_x, box1_bottom_y) = box1
+		# box1_w = box1_right_x - box1_left_x + 1
+		# box1_h = box1_bottom_y - box1_top_y + 1
+		# (box2_left_x, box2_top_y, box2_right_x, box2_bottom_y) = box2
+		# box2_w = box2_right_x - box2_left_x + 1
+		# box2_h = box2_bottom_y - box2_top_y + 1
+		# assert box1_left_x <= box1_right_x
+		# assert box2_left_x <= box2_right_x
+		# assert box1_top_y <= box1_bottom_y
+		# assert box2_top_y <= box2_bottom_y
+		# assert box1_w >= 0
+		# assert box1_h >= 0
+		# assert box2_w >= 0
+		# assert box2_h >= 0
+
+		# compute iou for each bounding box instance
+		hits = []
+		for (box1, box2) in zip(gtBoxList, predictedBoxList):
+			pred_center_x = (box2[0] + box2[2])/2
+			pred_center_y = (box2[1] + box2[3])/2
+			if box1[0] <= pred_center_x <= box1[2] and box1[1] <= pred_center_y <= box1[3]:
+				hits.append(1)
+			else:
+				hits.append(0)
+
+
+		matches = len([1 for h in hits if h == 1]);
+		accuracy = matches * 1.0 / len(hits);
+		return accuracy
+
 
 	def evaluate(self, predictedBoxList, gtBoxList, iouThreshold = 0.5):
 		""" Computes the overall accuracy and list of areas of IoU for each test instance.
@@ -86,7 +139,8 @@ class Evaluator(object):
 
 		iouList = self.compute_iou(predictedBoxList, gtBoxList);
 		accuracy = self.accuracy(iouList, iouThreshold);
-		return (accuracy, iouList);
+		point_game_accuracy = self.point_game_accuracy(predictedBoxList, gtBoxList);
+		return accuracy, iouList, point_game_accuracy
 
 	def evaluate_perclass(self, predictedBoxList, gtBoxList, boxCategoriesList, iouThreshold = 0.5):
 		""" Computes the overall accuracy, per-category accuracies, and list of areas of IoU for each test instance.
