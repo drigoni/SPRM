@@ -49,6 +49,7 @@ def parse_args():
 	parser.add_argument('--use_att_for_query', action = 'store_true', help = "Disable LSTM for query features and use attention.")
 	parser.add_argument('--use_mean_in_loss', action = 'store_true', help = "Consider all the couple <query, box> in the loss calculation.")
 	parser.add_argument('--MATnet', action = 'store_true', help = "True when we want to use the original model.")
+	parser.add_argument('--train_fract', type=float, default=1.0, help = "Fraction of training set to load for training.")
 
 	# debug mode
 	parser.add_argument('--debug', action = 'store_true')
@@ -69,9 +70,9 @@ if __name__ == '__main__':
 	# config
 	wordEmbedding = load_vocabulary("data/glove/glove.6B.300d.txt")
 	if args.test_set:
-		test_dset = Flickr30dataset(wordEmbedding, "test")
+		test_dset = Flickr30dataset(wordEmbedding, "test", train_fract=args.train_fract)
 	else:
-		test_dset = Flickr30dataset(wordEmbedding, "val")
+		test_dset = Flickr30dataset(wordEmbedding, "val", train_fract=args.train_fract)
 	test_loader = DataLoader(test_dset, batch_size = args.batch, num_workers = 4, drop_last = True, shuffle = True)
 	if args.MATnet:
 		model = MATnet(wordEmbedding, args)
@@ -83,10 +84,7 @@ if __name__ == '__main__':
 		score = evaluate(test_loader, model, device_str=args.device)
 		print("untrained eval score:", score)
 	else:
-		if args.debug:
-			train_dset = Flickr30dataset(wordEmbedding, "test")
-		else:
-			train_dset = Flickr30dataset(wordEmbedding, "train")
+		train_dset = Flickr30dataset(wordEmbedding, "train", train_fract=args.train_fract)
 		train_loader = DataLoader(train_dset, batch_size = args.batch, num_workers = 4, drop_last = True, shuffle = True)
 		best_model = train(model, loss, train_loader, test_loader, args, lr = args.lr, epochs = args.epochs, device_str=args.device)
 		torch.save(best_model.cpu().state_dict(), save_path)

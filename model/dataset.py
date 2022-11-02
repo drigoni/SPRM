@@ -14,16 +14,17 @@ from tqdm import tqdm
 from utils import utils
 from spellchecker import SpellChecker
 import spacy
+import random
 
 
 class Flickr30dataset(Dataset):
-	def __init__(self, wordEmbedding, name = 'train', dataroot = 'data/flickr30k/', vgg = False):
+	def __init__(self, wordEmbedding, name = 'train', dataroot = 'data/flickr30k/', vgg = False,  train_fract=1.0):
 		super(Flickr30dataset, self).__init__()
+		print("Loading flickr30k dataset. Split: ", name)
 		self.vgg = vgg
-		self.entries, self.img_id2idx, self.class_labels = load_dataset(name, dataroot, vgg = self.vgg)
+		self.entries, self.img_id2idx, self.class_labels = load_dataset(name, dataroot, vgg = self.vgg, train_fract=train_fract)
 		# img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
 		self.indexer = wordEmbedding.word_indexer
-
 		if self.vgg:
 			print("load vgg features")
 			h5_path = os.path.join(dataroot, 'vgg_dataset_pascal_vgbbox.hdf5')
@@ -34,11 +35,13 @@ class Flickr30dataset(Dataset):
 			self.features = np.array(hf.get('features'))
 			self.pos_boxes = np.array(hf.get('pos_bboxes'))
 
-		# get class_label indexes
-		self.class_idx = []
-		for label in self.class_labels:
-			label_idx = self.indexer.index_of(label)
-			self.class_idx.append(label_idx)
+		## get class_label indexes
+		# self.class_idx = []
+		# for label in self.class_labels:
+		# 	label_idx = self.indexer.index_of(label)
+		# 	self.class_idx.append(label_idx)
+
+		print("Dataset loaded.")
 			
 
 	def _get_entry(self, index):
@@ -284,8 +287,6 @@ def load_train_flickr30k(dataroot, img_id2idx, obj_detection, vgg = False, do_sp
 					'head': head
 				}
 				entries.append(entry)
-
-	print("Load Done!")
 	return entries
 
 def load_boxes_classes(file_classes = 'data/objects_vocab.txt', do_spellchecker=False):
@@ -309,18 +310,25 @@ def load_boxes_classes(file_classes = 'data/objects_vocab.txt', do_spellchecker=
 
 	return new_labels
 
-def load_dataset(name = 'train', dataroot = 'data/flickr30k/', vgg = False):
+def load_dataset(name = 'train', dataroot = 'data/flickr30k/', vgg = False, train_fract=1.0):
 	if vgg:
 		print("load vgg object det dict")
-		obj_detection_dict = json.load(open("data/obj_detection_vgg_pascal_vgbbox.json", "r"))
+		obj_detection_dict = json.load(open("data/flickr30k/obj_detection_vgg_pascal_vgbbox.json", "r"))
 		img_id2idx = cPickle.load(open(os.path.join(dataroot, 'vgg_pascal_vgbbox_%s_imgid2idx.pkl' % name), 'rb'))
 	else:
-		obj_detection_dict = json.load(open("data/%s_detection_dict.json" % name, "r"))
+		obj_detection_dict = json.load(open("data/flickr30k/%s_detection_dict.json" % name, "r"))
 		img_id2idx = cPickle.load(open(os.path.join(dataroot, '%s_imgid2idx.pkl' % name), 'rb'))
+
+	# subsample dataset accordin to train_fract value only in training set
+	if name == 'train' and train_fract < 1.0:
+		random.seed(2022)
+		n_images = len(img_id2idx)
+		n_subset = train_fract * n_images
+		subset_idx = random.sample([i for i in img_id2idx.keys()], int(n_subset))
+		img_id2idx = {key: img_id2idx[key] for key in subset_idx}
 
 	entries = load_train_flickr30k(dataroot, img_id2idx, obj_detection_dict, vgg = vgg, do_spellchecker=False)
 	class_labels = load_boxes_classes('data/objects_vocab.txt', do_spellchecker=False)
-	print("load flickr30k dataset successfully.")
 	return entries, img_id2idx, class_labels
 
 

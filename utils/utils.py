@@ -194,12 +194,12 @@ def unsupervised_get_match_index(src_bboxes, dst_bboxes):
 
 
 def load_vocabulary(embeddings_file: str) -> WordEmbeddings:
+	print("Load vocabulary. ")
 	f = open(embeddings_file)
 	word_indexer = WordIndexer()
 	vectors = []
-
+	# special chars
 	word_indexer.add_and_get_index("PAD")
-
 	word_indexer.add_and_get_index("UNK")
 	for line in f:
 		if line.strip() != "":

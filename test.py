@@ -32,6 +32,7 @@ def parse_args():
 	parser.add_argument('--use_att_for_query', action = 'store_true', help = "Disable LSTM for query features and use attention.")
 	parser.add_argument('--use_mean_in_loss', action = 'store_true', help = "Consider all the couple <query, box> in the loss calculation.")
 	parser.add_argument('--MATnet', action = 'store_true', help = "True when we want to use the original model.")
+	parser.add_argument('--train_fract', type=float, default=1.0, help = "Fraction of training set to load for training.")
 
 	# debug mode
 	parser.add_argument('--debug', action = 'store_true')
@@ -42,7 +43,7 @@ def parse_args():
 if __name__ == '__main__':
 	args = parse_args()
 	wordEmbedding = load_vocabulary("data/glove/glove.6B.300d.txt")
-	test_dset = Flickr30dataset(wordEmbedding, "test")
+	test_dset = Flickr30dataset(wordEmbedding, "test", train_fract=args.train_fract)
 
 	test_loader = DataLoader(test_dset, batch_size = 32, num_workers = 4, drop_last = True, shuffle = True)
 	if args.MATnet:
