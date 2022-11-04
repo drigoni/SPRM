@@ -2,16 +2,17 @@
 ### Owner: Davide Rigoni
 
 ### ============ SLURM COMMANDS
-#SBATCH --job-name='MATnet_model'  # create a short name for your job
+#SBATCH --job-name='phraseAttention_cosMean_lossCe_epoch25_cosW%a'  # create a short name for your job
 #SBATCH --mail-user=davide.rigoni.2@phd.unipd.it
-#SBATCH --output=cluster/out/MATnet_model%a.out
+#SBATCH --output=cluster/out/referit/phraseAttention_cosMean_lossCe_epoch25_cosW%a.out
 #SBATCH --partition=gpu
 #SBATCH --mem=50G				                    # total memory per node
-#SBATCH --time=0-24:00:00                           # total run time limit (DD-HH:MM:SS)
+#SBATCH --time=0-12:00:00                           # total run time limit (DD-HH:MM:SS)
 #SBATCH --nodes=1                                   # node count
 #SBATCH --ntasks-per-node=1                         # total number of tasks per node
 #SBATCH --cpus-per-task=16		                    # cpu-cores per task (>1 if multi-threaded tasks)
 #SBATCH --gpus-per-node=1                           # number of gpus per node
+#SBATCH --array=1-3
 ## #SBATCH --exclusive								
 #---- MORE COMMANDS
 #----#SBATCH --mail-type=begin                           # send email when job begins
@@ -52,20 +53,28 @@ echo ''
 
 
 ### ============ COMMAND TO EXECUTE
-# bash "./experiments/MATnet_model.bash"
+COSINE_WEIGHTS=(0 0.25 0.5 0.75 1)
+# bash "./experiments/phraseAttention/phraseAttention_cosMean_lossCe_epoch25_cosW${COSINE_WEIGHTS[${SLURM_ARRAY_TASK_ID}]//.}.bash"
 # params
 PROJECT_HOME=/ceph/hpc/home/eudavider/repository/weakvg
 BATCH_SIZE=8
 EPOCHS=25
+COSINE_WEIGHT=${COSINE_WEIGHTS[${SLURM_ARRAY_TASK_ID}]}
 DEVICE='cuda'
-MODEL_NAME='MATnet_model'
+COSINE_SIMILARITY_STRATEGY='mean'
+LOSS_STRATEGY='ce'
+MODEL_NAME='phraseAttention_cosMean_lossLuca_epoch25_cosW0'
+
 # command
 python ${PROJECT_HOME}/main.py  --batch ${BATCH_SIZE} \
                                 --epochs ${EPOCHS} \
+                                --cosine_weight ${COSINE_WEIGHT} \
                                 --device ${DEVICE} \
                                 --save_name ${MODEL_NAME} \
-                                --loss_strategy "ce" \
-                                --MATnet
+                                --cosine_similarity_strategy ${COSINE_SIMILARITY_STRATEGY} \
+                                --loss_strategy ${LOSS_STRATEGY} \
+                                --dataset 'referit' \
+                                --use_att_for_query
 
 # last default print
 echo ''

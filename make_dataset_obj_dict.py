@@ -67,12 +67,18 @@ def load_data(img_folder):
         img_id = img_file.split('/')[-1][:-8]   # remove ".jpg.npz"
         tmp_dict = dict()
         with np.load(img_file, allow_pickle=True) as f:
-            # NOTE: background included in the classes
-            tmp_dict['bboxes'] = f['bbox'].tolist()
-            best_class_idx = np.argmax(f['cls_prob'], axis=-1).tolist()
-            best_attribute_idx = np.argmax(f['attr_prob'], axis=-1).tolist()
-            best_class_labels = [class_labels[i] for i in best_class_idx]
-            best_attribute_labels = [attributes_labels[i] for i in best_attribute_idx]
+            # NOTE: background included in the extarcted classes. So we filter those boxes
+            best_class_idx = np.argmax(f['cls_prob'], axis=-1)
+            best_attribute_idx = np.argmax(f['attr_prob'], axis=-1)
+            # filter
+            selected_boxes = f['bbox'][best_class_idx > 0, :]
+            selected_classes = best_class_idx[best_class_idx > 0]
+            selected_attributes = best_attribute_idx[best_class_idx > 0]
+            # retrieve labels
+            best_class_labels = [class_labels[i] for i in selected_classes]
+            best_attribute_labels = [attributes_labels[i] for i in selected_attributes]
+            # save
+            tmp_dict['bboxes'] = selected_boxes.tolist()
             tmp_dict['classes'] = best_class_labels
             tmp_dict['attrs'] = best_attribute_labels
         all_data[img_id] = tmp_dict

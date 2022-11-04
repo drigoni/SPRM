@@ -83,7 +83,10 @@ if __name__ == '__main__':
 	torch.manual_seed(args.seed)
 	random.seed(args.seed)
 	np.random.seed(args.seed)
-	save_path = os.path.join("output", args.save_name + '.pt')
+	if args.dataset == "flickr30k":
+		save_path = os.path.join("output/flickr", args.save_name + '.pt')
+	else:
+		save_path = os.path.join("output/referit", args.save_name + '.pt')
 
 	# config
 	wordEmbedding = load_vocabulary("data/glove/glove.6B.300d.txt")

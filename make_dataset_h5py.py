@@ -127,6 +127,7 @@ def extract(split, infiles, task='vqa'):
         with open(infile, "r+") as tsv_in_file:
             reader = csv.DictReader(tsv_in_file, delimiter='\t', fieldnames=FIELDNAMES)
             for item in reader:
+                print(item['image_id'])
                 item['num_boxes'] = int(item['num_boxes'])
                 item['boxes'] = ast.literal_eval(item['boxes'])
                 item['features'] = ast.literal_eval(item['features'])
@@ -213,7 +214,7 @@ if __name__ == '__main__':
         print("Task error: ", args.task)
 
 
-# referit
+# referit con __background__
 # reading tsv...data/referit/train_referit_resnet101_faster_rcnn_genome.tsv
 # Number of detected boxes for split train: 899177. 
 # Max number of boxes for split train: 100
