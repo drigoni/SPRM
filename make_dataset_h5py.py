@@ -34,9 +34,9 @@ def extract(split, infiles, task='vqa'):
     FIELDNAMES = ['image_id', 'image_w', 'image_h', 'num_boxes', 'boxes', 'features']
     if task == 'flickr':
         data_file = {
-            'train': 'data/flickr30k/train_features_compress.hdf5.hdf5',
-            'val': 'data/flickr30k/val_features_compress.hdf5.hdf5',
-            'test': 'data/flickr30k/test_features_compress.hdf5.hdf5'}
+            'train': 'data/flickr30k/train_features_compress.hdf5',
+            'val': 'data/flickr30k/val_features_compress.hdf5',
+            'test': 'data/flickr30k/test_features_compress.hdf5'}
         indices_file = {
             'train': 'data/flickr30k/train_imgid2idx.pkl',
             'val': 'data/flickr30k/val_imgid2idx.pkl',
@@ -55,9 +55,9 @@ def extract(split, infiles, task='vqa'):
             'test': None,}
     elif task == 'referit':
         data_file = {
-            'train': 'data/referit/train_features_compress.hdf5.hdf5',
-            'val': 'data/referit/val_features_compress.hdf5.hdf5',
-            'test': 'data/referit/test_features_compress.hdf5.hdf5'}
+            'train': 'data/referit/train_features_compress.hdf5',
+            'val': 'data/referit/val_features_compress.hdf5',
+            'test': 'data/referit/test_features_compress.hdf5'}
         indices_file = {
             'train': 'data/referit/train_imgid2idx.pkl',
             'val': 'data/referit/val_imgid2idx.pkl',

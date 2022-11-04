@@ -17,40 +17,26 @@ import spacy
 import random
 
 
-class Flickr30dataset(Dataset):
-	def __init__(self, wordEmbedding, name = 'train', dataroot = 'data/flickr30k/', vgg = False,  train_fract=1.0):
-		super(Flickr30dataset, self).__init__()
+class Flickr30Dataset(Dataset):
+	def __init__(self, wordEmbedding, name = 'train', dataroot = 'data/flickr30k/',  train_fract=1.0):
+		super(Flickr30Dataset, self).__init__()
 		print("Loading flickr30k dataset. Split: ", name)
-		self.vgg = vgg
-		self.entries, self.img_id2idx, self.class_labels = load_dataset(name, dataroot, vgg = self.vgg, train_fract=train_fract)
+		self.entries, self.img_id2idx, self.class_labels = load_dataset(name, dataroot, train_fract=train_fract)
 		# img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
 		self.indexer = wordEmbedding.word_indexer
-		if self.vgg:
-			print("load vgg features")
-			h5_path = os.path.join(dataroot, 'vgg_dataset_pascal_vgbbox.hdf5')
-		else:
-			h5_path = os.path.join(dataroot, '%s_features_compress.hdf5' % name)
+		h5_path = os.path.join(dataroot, '%s_features_compress.hdf5' % name)
 
 		with h5py.File(h5_path, 'r') as hf:
+			# print(hf.keys()) 	#<KeysViewHDF5 ['bboxes', 'features', 'pos_bboxes']>
 			self.features = np.array(hf.get('features'))
 			self.pos_boxes = np.array(hf.get('pos_bboxes'))
-
-		## get class_label indexes
-		# self.class_idx = []
-		# for label in self.class_labels:
-		# 	label_idx = self.indexer.index_of(label)
-		# 	self.class_idx.append(label_idx)
-
 		print("Dataset loaded.")
 			
 
 	def _get_entry(self, index):
 		entry = self.entries[index]
-		if self.vgg:
-			attrs = []
-		else:
-			attrs = []
-			# attrs = entry['attrs']
+		attrs = []
+		# attrs = entry['attrs']
 		return entry['image'], entry['labels'], entry['query'], entry['head'], attrs, entry['detected_bboxes'], entry['target_bboxes']
 
 	def __getitem__(self, index):
@@ -91,12 +77,10 @@ class Flickr30dataset(Dataset):
 		labels_idx[:num_obj] = [max(self.indexer.index_of(re.split(' ,', w)[-1]), 1) for w in labels]
 		labels_idx = labels_idx[:K]
 
-		if self.vgg:
-			attr_idx = [0] * K
-		else:
-			attr_idx = [0] * K
-			# attr_idx[:num_obj] = [max(self.indexer.index_of(w), 1) for w in attrs]
-			# attr_idx = attr_idx[:K]
+
+		attr_idx = [0] * K
+		# attr_idx[:num_obj] = [max(self.indexer.index_of(w), 1) for w in attrs]
+		# attr_idx = attr_idx[:K]
 
 		# NOTE: padding is represented with index 0, while missing words are represented with value 1
 		querys_idx = []
@@ -152,7 +136,7 @@ class Flickr30dataset(Dataset):
 		return len(self.entries)
 
 
-def load_train_flickr30k(dataroot, img_id2idx, obj_detection, vgg = False, do_spellchecker=False):
+def load_train_flickr30k(dataroot, img_id2idx, obj_detection, do_spellchecker=False):
 	"""Load entries
 
 	img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
@@ -198,17 +182,10 @@ def load_train_flickr30k(dataroot, img_id2idx, obj_detection, vgg = False, do_sp
 				if not entity_id in target_bboxes_dict.keys():
 					target_bboxes_dict[entity_id] = []
 				target_bboxes_dict[entity_id].append([left, top, right, bottom])
-
-		if vgg:
-			image_id = str(image_id)
-			bboxes = obj_detection[image_id]['bboxes']
-			labels = obj_detection[image_id]['classes']  # [B, 4]
-		# features =  obj_detection[image_id]['features']
-		else:
-			image_id = str(image_id)
-			bboxes = obj_detection[image_id]['bboxes']
-			labels = obj_detection[image_id]['classes']  # [B, 4]
-			attrs = obj_detection[image_id]['attrs'] if 'attrs' in obj_detection[image_id].keys() else []
+		image_id = str(image_id)
+		bboxes = obj_detection[image_id]['bboxes']
+		labels = obj_detection[image_id]['classes']  # [B, 4]
+		attrs = obj_detection[image_id]['attrs'] if 'attrs' in obj_detection[image_id].keys() else []
 
 		assert (len(bboxes) == len(labels))
 
@@ -266,27 +243,16 @@ def load_train_flickr30k(dataroot, img_id2idx, obj_detection, vgg = False, do_sp
 			if 0 == len(entity_ids):
 				continue
 
-			if vgg:
-				entry = {
-					'image': image_id,
-					'target_bboxes': target_bboxes,  # in order of entities
-					"detected_bboxes": bboxes,  # list, in order of labels
-					'labels': labels,
-					'query': query,
-					'head': head
-				}
-				entries.append(entry)
-			else:
-				entry = {
-					'image': image_id,
-					'target_bboxes': target_bboxes,  # in order of entities
-					"detected_bboxes": bboxes,  # list, in order of labels
-					'labels': labels,
-					'attrs': attrs,
-					'query': query,
-					'head': head
-				}
-				entries.append(entry)
+			entry = {
+				'image': image_id,
+				'target_bboxes': target_bboxes,  # in order of entities
+				"detected_bboxes": bboxes,  # list, in order of labels
+				'labels': labels,
+				'attrs': attrs,
+				'query': query,
+				'head': head
+			}
+			entries.append(entry)
 	return entries
 
 def load_boxes_classes(file_classes = 'data/objects_vocab.txt', do_spellchecker=False):
@@ -310,14 +276,16 @@ def load_boxes_classes(file_classes = 'data/objects_vocab.txt', do_spellchecker=
 
 	return new_labels
 
-def load_dataset(name = 'train', dataroot = 'data/flickr30k/', vgg = False, train_fract=1.0):
-	if vgg:
-		print("load vgg object det dict")
-		obj_detection_dict = json.load(open("data/flickr30k/obj_detection_vgg_pascal_vgbbox.json", "r"))
-		img_id2idx = cPickle.load(open(os.path.join(dataroot, 'vgg_pascal_vgbbox_%s_imgid2idx.pkl' % name), 'rb'))
-	else:
-		obj_detection_dict = json.load(open("data/flickr30k/%s_detection_dict.json" % name, "r"))
-		img_id2idx = cPickle.load(open(os.path.join(dataroot, '%s_imgid2idx.pkl' % name), 'rb'))
+def load_dataset(name = 'train', dataroot = 'data/flickr30k/', train_fract=1.0):
+	obj_detection_dict = json.load(open("data/flickr30k/%s_detection_dict.json" % name, "r"))
+	# n_objects = 0
+	# classes = set()
+	# for key, val in obj_detection_dict.items():
+	# 	n_objects += len(val['bboxes'])
+	# 	classes = classes.union(set(val['classes']))
+	# print("Number of objects: ", n_objects)
+	# print("Classes: ", len(classes), classes)
+	img_id2idx = cPickle.load(open(os.path.join(dataroot, '%s_imgid2idx.pkl' % name), 'rb'))
 
 	# subsample dataset accordin to train_fract value only in training set
 	if name == 'train' and train_fract < 1.0:
@@ -327,7 +295,7 @@ def load_dataset(name = 'train', dataroot = 'data/flickr30k/', vgg = False, trai
 		subset_idx = random.sample([i for i in img_id2idx.keys()], int(n_subset))
 		img_id2idx = {key: img_id2idx[key] for key in subset_idx}
 
-	entries = load_train_flickr30k(dataroot, img_id2idx, obj_detection_dict, vgg = vgg, do_spellchecker=False)
+	entries = load_train_flickr30k(dataroot, img_id2idx, obj_detection_dict, do_spellchecker=False)
 	class_labels = load_boxes_classes('data/objects_vocab.txt', do_spellchecker=False)
 	return entries, img_id2idx, class_labels
 

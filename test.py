@@ -5,11 +5,21 @@ import torch
 from torch.utils.data import DataLoader
 import wandb
 
-from model.dataset import Flickr30dataset
+from model.dataset_flickr import Flickr30Dataset
+from model.dataset_referit import ReferitDataset
 from model.model import ConceptNet
 from model.model_MATnet import MATnet
 from model.train_model import evaluate
 from utils.utils import load_vocabulary, init_net
+
+
+def get_datasets(args):
+	test_split = "test"
+	if args.dataset == "flickr30k":
+		test_dset = Flickr30Dataset(wordEmbedding, test_split, train_fract=args.train_fract)
+	else:
+		test_dset = ReferitDataset(wordEmbedding, test_split, train_fract=args.train_fract)
+	return train_dset, test_dset
 
 
 def parse_args():
@@ -25,6 +35,8 @@ def parse_args():
 						choices=['mean', 'max'])
 	parser.add_argument('--loss_strategy', type= str, default='ce',
 						choices=['luca', 'all', 'ce'])
+	parser.add_argument('--dataset', type= str, default='flickr30k',
+						choices=['flickr30k', 'referit'])
 	parser.add_argument('--emb_dim', type= int, default=300)
 	parser.add_argument('--word_emb_dim', type= int, default=300)
 	parser.add_argument('--feature_dim', type= int, default=2048)
@@ -43,7 +55,7 @@ def parse_args():
 if __name__ == '__main__':
 	args = parse_args()
 	wordEmbedding = load_vocabulary("data/glove/glove.6B.300d.txt")
-	test_dset = Flickr30dataset(wordEmbedding, "test", train_fract=args.train_fract)
+	test_dset = get_datasets(args)
 
 	test_loader = DataLoader(test_dset, batch_size = 32, num_workers = 4, drop_last = True, shuffle = True)
 	if args.MATnet:

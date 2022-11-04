@@ -39,7 +39,7 @@ def union(bboxes):
 	leftmin, topmin, rightmax, bottommax = 999, 999, 0, 0
 	for box in bboxes:
 		left, top, right, bottom = box
-		if left == 0 and top == 0:
+		if left == 0 and top == 0 and right == 0 and bottom == 0: 	# padding
 			continue
 		leftmin, topmin, rightmax, bottommax = min(left, leftmin), min(top, topmin), max(right, rightmax), max(bottom, bottommax)
 

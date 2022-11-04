@@ -58,7 +58,7 @@ class Evaluator(object):
 		"""
 
 		matches = len([1 for iou in iouList if iou >= iouThreshold]);
-		accuracy = matches * 1.0 / len(iouList);
+		accuracy = matches * 1.0 / (len(iouList) + 1e-8)
 		return accuracy
 
 
@@ -110,7 +110,7 @@ class Evaluator(object):
 
 
 		matches = len([1 for h in hits if h == 1]);
-		accuracy = matches * 1.0 / len(hits);
+		accuracy = matches * 1.0 / (len(hits) + 1e-8)
 		return accuracy
 
 

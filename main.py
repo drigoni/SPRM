@@ -7,7 +7,8 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from model.dataset import Flickr30dataset
+from model.dataset_flickr import Flickr30Dataset
+from model.dataset_referit import ReferitDataset
 # from model import MATnet
 from model.model import ConceptNet
 from model.model_MATnet import MATnet
@@ -17,6 +18,21 @@ from utils.utils import load_vocabulary
 
 with warnings.catch_warnings():
 	warnings.filterwarnings("ignore", category = FutureWarning)
+
+
+
+def get_datasets(args):
+	if args.test_set:
+		test_split = "test"
+	else:
+		test_split = "val"
+	if args.dataset == "flickr30k":
+		test_dset = Flickr30Dataset(wordEmbedding, test_split, train_fract=args.train_fract)
+		train_dset = Flickr30Dataset(wordEmbedding, "train", train_fract=args.train_fract)
+	else:
+		test_dset = ReferitDataset(wordEmbedding, test_split, train_fract=args.train_fract)
+		train_dset = ReferitDataset(wordEmbedding, "train", train_fract=args.train_fract)
+	return train_dset, test_dset
 
 
 def parse_args():
@@ -37,6 +53,8 @@ def parse_args():
 						help = "random seed")
 	parser.add_argument('--device', type= str, default='cuda',
 						choices=['cuda', 'cpu'])
+	parser.add_argument('--dataset', type= str, default='flickr30k',
+						choices=['flickr30k', 'referit'])
 	# model params
 	parser.add_argument('--cosine_similarity_strategy', type= str, default='mean',
 						choices=['mean', 'max'])
@@ -69,11 +87,11 @@ if __name__ == '__main__':
 
 	# config
 	wordEmbedding = load_vocabulary("data/glove/glove.6B.300d.txt")
-	if args.test_set:
-		test_dset = Flickr30dataset(wordEmbedding, "test", train_fract=args.train_fract)
-	else:
-		test_dset = Flickr30dataset(wordEmbedding, "val", train_fract=args.train_fract)
+	# get dataset
+	train_dset, test_dset = get_datasets(args)
+	train_loader = DataLoader(train_dset, batch_size = args.batch, num_workers = 4, drop_last = True, shuffle = True)
 	test_loader = DataLoader(test_dset, batch_size = args.batch, num_workers = 4, drop_last = True, shuffle = True)
+	# load model
 	if args.MATnet:
 		model = MATnet(wordEmbedding, args)
 	else:
@@ -84,8 +102,6 @@ if __name__ == '__main__':
 		score = evaluate(test_loader, model, device_str=args.device)
 		print("untrained eval score:", score)
 	else:
-		train_dset = Flickr30dataset(wordEmbedding, "train", train_fract=args.train_fract)
-		train_loader = DataLoader(train_dset, batch_size = args.batch, num_workers = 4, drop_last = True, shuffle = True)
 		best_model = train(model, loss, train_loader, test_loader, args, lr = args.lr, epochs = args.epochs, device_str=args.device)
 		torch.save(best_model.cpu().state_dict(), save_path)
 		print("save model to", save_path)
