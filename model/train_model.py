@@ -30,9 +30,9 @@ def train(model, loss_function, train_loader, test_loader, args, lr = 1e-4, epoc
 	model = model.float()
 	optimizer = torch.optim.Adam(model.parameters(), lr = lr)
 
-	# print("--- Evaluation Before Training...")
-	# score = evaluate(test_loader, model, device_str)
-	# print("Eval score on test dataset:", score)
+	print("--- EVALUATION BEFORE TRAINING")
+	score, point_game_score = evaluate(test_loader, model, device_str)
+	print("Evaluation before training -> score: {}   point_game_score: {} .".format(score, point_game_score))
 
 	# params for best model
 	best_model = None
