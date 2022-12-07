@@ -1,0 +1,7 @@
+h5py
+numpy
+scipy
+torch==1.4.0
+tqdm
+wandb
+pyspellchecker
