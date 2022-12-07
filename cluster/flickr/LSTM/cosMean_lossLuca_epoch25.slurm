@@ -10,11 +10,11 @@
 #SBATCH --time=0-12:00:00                           # total run time limit (DD-HH:MM:SS)
 #SBATCH --nodes=1                                   # node count
 #SBATCH --ntasks-per-node=1                         # total number of tasks per node
-#SBATCH --cpus-per-task=16		                    # cpu-cores per task (>1 if multi-threaded tasks)
+#SBATCH --cpus-per-task=2		                    # cpu-cores per task (>1 if multi-threaded tasks)
 #SBATCH --gpus-per-node=1                           # number of gpus per node
-#SBATCH --array=1-3
-## #SBATCH --exclusive								
-#---- MORE COMMANDS
+#--- #SBATCH --array=1-3
+#--- #SBATCH --exclusive								
+#--- #MORE COMMANDS
 #----#SBATCH --mail-type=begin                           # send email when job begins
 #--- #SBATCH --mail-type=end                             # send email when job ends
 #--- #SBATCH --error=cluster/err/dynamicHead_train_scalable.err
@@ -25,13 +25,13 @@
 
 
 ### ============ VARIABLES SETTING
-SLURM_MASTER_PORT=$(expr 10000 + $(echo -n ${SLURM_JOBID} | tail -c 4))
-SLURM_MASTER_NODE="$(scontrol show hostnames ${SLURM_JOB_NODELIST} | head -n 1)" # such as gn11
-SLURM_MASTER_ADDR="${SLURM_MASTER_NODE}"
-SLURM_MASTER_URL="tcp://${SLURM_MASTER_ADDR}:${SLURM_MASTER_PORT}"
-export SLURM_MASTER_PORT=SLURM_MASTER_PORT
-export SLURM_MASTER_NODE=$SLURM_MASTER_NODE
-export SLURM_MASTER_ADDR=$SLURM_MASTER_ADDR
+### SLURM_MASTER_PORT=$(expr 10000 + $(echo -n ${SLURM_JOBID} | tail -c 4))
+### SLURM_MASTER_NODE="$(scontrol show hostnames ${SLURM_JOB_NODELIST} | head -n 1)" # such as gn11
+### SLURM_MASTER_ADDR="${SLURM_MASTER_NODE}"
+### SLURM_MASTER_URL="tcp://${SLURM_MASTER_ADDR}:${SLURM_MASTER_PORT}"
+### export SLURM_MASTER_PORT=SLURM_MASTER_PORT
+### export SLURM_MASTER_NODE=$SLURM_MASTER_NODE
+### export SLURM_MASTER_ADDR=$SLURM_MASTER_ADDR
 
 ### ============ SOME PRINT COMMANDS
 echo ''
@@ -44,10 +44,10 @@ echo "Ntasks per node: "  ${SLURM_NTASKS_PER_NODE}
 echo "NGPUs per node: "  ${SLURM_GPUS_PER_NODE}
 echo "CUDA_VISIBLE_DEVICES: " ${CUDA_VISIBLE_DEVICES}
 echo "TORCH_DEVICE_COUNT: " $(python -c 'import torch; print(torch.cuda.device_count())')
-echo "SLURM_MASTER_PORT: " ${SLURM_MASTER_PORT}
-echo "SLURM_MASTER_NODE: " ${SLURM_MASTER_NODE}
-echo "SLURM_MASTER_ADDR: " ${SLURM_MASTER_ADDR}
-echo "SLURM_MASTER_URL: " ${SLURM_MASTER_URL}
+### echo "SLURM_MASTER_PORT: " ${SLURM_MASTER_PORT}
+### echo "SLURM_MASTER_NODE: " ${SLURM_MASTER_NODE}
+### echo "SLURM_MASTER_ADDR: " ${SLURM_MASTER_ADDR}
+### echo "SLURM_MASTER_URL: " ${SLURM_MASTER_URL}
 echo "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX "
 echo ''
 
@@ -56,16 +56,19 @@ echo ''
 COSINE_WEIGHTS=(0 0.25 0.5 0.75 1)
 # bash "./experiments/LSTM/cosMean_lossLuca_epoch25_cosW${COSINE_WEIGHTS[${SLURM_ARRAY_TASK_ID}]//.}.bash"
 # params
-PROJECT_HOME=/ceph/hpc/home/eudavider/repository/weakvg
+ENV_PATH=/home/lparolar/Programs/miniconda/envs/weakvg/bin
+PROJECT_HOME=/home/lparolar/Projects/weakvg
 BATCH_SIZE=16
 EPOCHS=25
-COSINE_WEIGHT=${COSINE_WEIGHTS[${SLURM_ARRAY_TASK_ID}]}
+COSINE_WEIGHT=0.5
+###${COSINE_WEIGHTS[${SLURM_ARRAY_TASK_ID}]}
 DEVICE='cuda'
 COSINE_SIMILARITY_STRATEGY='mean'
 LOSS_STRATEGY='luca'
 MODEL_NAME='cosMean_lossCe_epoch25_cosW0'
+
 # command
-python ${PROJECT_HOME}/main.py  --batch ${BATCH_SIZE} \
+${ENV_PATH}/python ${PROJECT_HOME}/main.py  --batch ${BATCH_SIZE} \
                                 --epochs ${EPOCHS} \
                                 --cosine_weight ${COSINE_WEIGHT} \
                                 --device ${DEVICE} \
