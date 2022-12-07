@@ -16,7 +16,7 @@ with warnings.catch_warnings():
 
 def train(model, loss_function, train_loader, test_loader, args, lr = 1e-4, epochs = 25, device_str='cuda'):
 	# init wandb
-	wandb.init(project="weakvg", entity="drigoni", config=vars(args))
+	wandb.init(project="weakvg", entity="weakly-guys", config=vars(args))
 	wandb.watch(model)
 
 	# device
