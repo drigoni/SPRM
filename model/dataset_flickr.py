@@ -21,9 +21,10 @@ class Flickr30Dataset(Dataset):
 	def __init__(self, wordEmbedding, name = 'train', dataroot = 'data/flickr30k/',  train_fract=1.0):
 		super(Flickr30Dataset, self).__init__()
 		print("Loading flickr30k dataset. Split: ", name)
-		self.entries, self.img_id2idx, self.class_labels = load_dataset(name, dataroot, train_fract=train_fract)
-		# img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
 		self.indexer = wordEmbedding.word_indexer
+		self.entries, self.img_id2idx = load_dataset(name, dataroot, train_fract=train_fract)
+		self.class_labels = load_boxes_classes('data/objects_vocab.txt', word_embedding=wordEmbedding, word_indexer=self.indexer, do_spellchecker=False)
+		# img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
 		h5_path = os.path.join(dataroot, '%s_features_compress.hdf5' % name)
 
 		with h5py.File(h5_path, 'r') as hf:
@@ -255,7 +256,12 @@ def load_train_flickr30k(dataroot, img_id2idx, obj_detection, do_spellchecker=Fa
 			entries.append(entry)
 	return entries
 
-def load_boxes_classes(file_classes = 'data/objects_vocab.txt', do_spellchecker=False):
+def load_boxes_classes(
+		file_classes = 'data/objects_vocab.txt',
+		word_embedding=None,
+		word_indexer=None,
+		do_spellchecker=False
+):
 	# read labels
 	with open(file_classes, 'r') as f:
 		data = f.readlines()
@@ -273,6 +279,32 @@ def load_boxes_classes(file_classes = 'data/objects_vocab.txt', do_spellchecker=
 				new_labels.append(label)
 	else:
 		new_labels = labels
+	
+	# correct labels made up of multiple words e.g. "bus stop" and with different
+	# variants e.g. "stop sign,stopsign"
+	if word_indexer is not None and word_embedding is not None:
+		for i in range(len(new_labels)):
+			label = new_labels[i]
+
+			if word_indexer.contains(label):
+				continue
+		
+			label_parts = label.split(",")  # multiple variants
+			label_parts_embedding = []
+
+			for label_part in label_parts:
+				label_words = label_part.split(" ")  # multiple words
+				label_words_embedding = [word_embedding.get_embedding(word) for word in label_words if word_indexer.contains(word)]
+				label_part_embedding = np.mean(label_words_embedding, axis=0).reshape(-1)
+				label_parts_embedding.append(label_part_embedding)
+			
+			# we found some words for each label part, then we combine them and
+			# add the label to the word embedding along with its new embedding
+			if len(label_parts_embedding) > 0:
+				label_embedding = np.mean(label_parts_embedding, axis=0).reshape(-1)
+
+				word_indexer.add_and_get_index(label)
+				word_embedding.vectors[len(word_embedding.vectors)] = label_embedding
 
 	return new_labels
 
@@ -296,8 +328,7 @@ def load_dataset(name = 'train', dataroot = 'data/flickr30k/', train_fract=1.0):
 		img_id2idx = {key: img_id2idx[key] for key in subset_idx}
 
 	entries = load_train_flickr30k(dataroot, img_id2idx, obj_detection_dict, do_spellchecker=False)
-	class_labels = load_boxes_classes('data/objects_vocab.txt', do_spellchecker=False)
-	return entries, img_id2idx, class_labels
+	return entries, img_id2idx
 
 
 # def gen_obj_dict(obj_detection):
