@@ -295,16 +295,18 @@ def load_boxes_classes(
 			for label_part in label_parts:
 				label_words = label_part.split(" ")  # multiple words
 				label_words_embedding = [word_embedding.get_embedding(word) for word in label_words if word_indexer.contains(word)]
-				label_part_embedding = np.mean(label_words_embedding, axis=0).reshape(-1)
-				label_parts_embedding.append(label_part_embedding)
+
+				if len(label_words_embedding) > 0:
+					label_part_embedding = np.mean(label_words_embedding, axis=0).reshape(-1)
+					label_parts_embedding.append(label_part_embedding)
 			
 			# we found some words for each label part, then we combine them and
 			# add the label to the word embedding along with its new embedding
 			if len(label_parts_embedding) > 0:
 				label_embedding = np.mean(label_parts_embedding, axis=0).reshape(-1)
 
-				word_indexer.add_and_get_index(label)
-				word_embedding.vectors[len(word_embedding.vectors)] = label_embedding
+				added_idx = word_indexer.add_and_get_index(label)
+				word_embedding.vectors = np.insert(word_embedding.vectors, added_idx, label_embedding, axis=0)
 
 	return new_labels
 
