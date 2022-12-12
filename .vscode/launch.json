@@ -5,11 +5,11 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python: Current File",
+      "name": "main",
       "type": "python",
       "request": "launch",
       "program": "main.py",
-      "args": ["--word_emb_dim=50", "--emb_dim=50", "--batch=3"],
+      "args": ["--word_emb_dim=50", "--emb_dim=50", "--batch=4", "--loss_strategy=luca"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "env": {
