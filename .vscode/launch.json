@@ -1,0 +1,21 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: Current File",
+      "type": "python",
+      "request": "launch",
+      "program": "main.py",
+      "args": ["--word_emb_dim=50", "--emb_dim=50", "--batch=3"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH":"${PYTHONPATH}:/home/lparolari/.miniconda3/envs/weakvg/bin",
+        "WANDB_MODE": "offline"
+      }
+    }
+  ]
+}
