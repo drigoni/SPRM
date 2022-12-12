@@ -58,15 +58,15 @@ def train(model, loss_function, train_loader, test_loader, args, lr = 1e-4, epoc
 			
 			# training steps
 			optimizer.zero_grad()
-			prediction_scores, prediction_loss, target_pred = model.forward(query, head, labels, feature, attrs, bboxes)
-			loss = loss_function(prediction_loss, target_pred)
+			prediction_scores, prediction_loss, target_pred, query_similarity = model.forward(query, head, labels, feature, attrs, bboxes)
+			loss = loss_function(prediction_loss, target_pred, query_similarity)
 			loss.backward()
 			optimizer.step()
 
 			# update variables
 			n_batches += 1
 			total_loss += loss.item()
-		
+
 		t1 = time.time()
 		print("Training -> time: {} | total_loss: {} .".format(t1 - t, total_loss / n_batches))
 

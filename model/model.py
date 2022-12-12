@@ -86,6 +86,14 @@ class ConceptNet(nn.Module):
 		concepts_similarity = self._get_concept_similarity(q_emb_freezed, k_emb_freezed, num_words, mask)
 		prediction_scores = self._get_predictions(q_feat, v_feat, concepts_similarity, mask, self.PREDICTION_WEIGHT)
 
+		# get query similarity
+		prediction_query = q_emb_freezed                            # [b, query, word, emb]
+		prediction_query = torch.mean(prediction_query, dim=-2)  # [b, query, emb]
+		prediction_query = torch.mean(prediction_query, dim=-2)  # [b, emb]
+		prediction_query_a = prediction_query.unsqueeze(1).repeat(1, batch_size, 1)  # [b, b, emb]
+		prediction_query_b = prediction_query.unsqueeze(0).repeat(batch_size, 1, 1)  # [b, b, emb]
+		query_similarity = torch.nn.functional.cosine_similarity(prediction_query_a, prediction_query_b, dim=-1)  # [b, b]
+
 		# attention sulle phrases
 		# attmap = torch.einsum('avd, bqd -> baqv', k_emb, p_emb)  # [B1, K, dim] x [B2, querys, dim] => [B2, B1, querys, K]
 		# attmap_sm = self.softmax(attmap)  # [B2, B1, querys, K]
@@ -95,10 +103,10 @@ class ConceptNet(nn.Module):
 
 		prediction_loss, target = self.get_predictions_for_loss(prediction_scores, bool_queries, bool_proposals, mask)
 
-		return prediction_scores, prediction_loss, target
+		return prediction_scores, prediction_loss, target, query_similarity
 	
 	def predict(self, query, head, label, feature, attrs, bboxes):
-		prediction_scores, prediction_loss, target = self.forward(query, head, label, feature, attrs, bboxes)
+		prediction_scores, prediction_loss, target, query_similarity = self.forward(query, head, label, feature, attrs, bboxes)
 		batch_size = prediction_scores.shape[0]
 		n_query = prediction_scores.shape[1]
 		n_proposal = prediction_scores.shape[3]
