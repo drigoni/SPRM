@@ -27,11 +27,11 @@ def get_datasets(args):
 	else:
 		test_split = "val"
 	if args.dataset == "flickr30k":
-		test_dset = Flickr30Dataset(wordEmbedding, test_split, train_fract=args.train_fract)
-		train_dset = Flickr30Dataset(wordEmbedding, "train", train_fract=args.train_fract)
+		test_dset = Flickr30Dataset(wordEmbedding, test_split, train_fract=args.train_fract, do_spellchecker=args.do_spellchecker)
+		train_dset = Flickr30Dataset(wordEmbedding, "train", train_fract=args.train_fract, do_spellchecker=args.do_spellchecker)
 	else:
-		test_dset = ReferitDataset(wordEmbedding, test_split, train_fract=args.train_fract)
-		train_dset = ReferitDataset(wordEmbedding, "train", train_fract=args.train_fract)
+		test_dset = ReferitDataset(wordEmbedding, test_split, train_fract=args.train_fract, do_spellchecker=args.do_spellchecker)
+		train_dset = ReferitDataset(wordEmbedding, "train", train_fract=args.train_fract, do_spellchecker=args.do_spellchecker)
 	return train_dset, test_dset
 
 
@@ -60,6 +60,7 @@ def parse_args():
 						choices=['mean', 'max'])
 	parser.add_argument('--loss_strategy', type= str, default='luca',
 						choices=['luca', 'all', 'ce'])
+	parser.add_argument('--do_spellchecker', action="store_true", default=False)
 	parser.add_argument('--emb_dim', type= int, default=300)
 	parser.add_argument('--word_emb_dim', type= int, default=300)
 	parser.add_argument('--feature_dim', type= int, default=2048)
