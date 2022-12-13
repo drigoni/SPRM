@@ -228,8 +228,8 @@ def load_train_flickr30k(dataroot, img_id2idx, obj_detection, do_spellchecker=Fa
 					words_corrected = [spell.correction(word) or word for word in words]
 					phrase_corrected = ' '.join(words_corrected)
 					if phrase != phrase_corrected:
-						phrase = phrase_corrected
 						print(phrase, "->", phrase_corrected)
+						phrase = phrase_corrected
 
 				# select heads. TODO: just first head of the query
 				# tmp_head = ''
