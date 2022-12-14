@@ -21,6 +21,7 @@ class ConceptNet(nn.Module):
 		self.PREDICTION_WEIGHT = args.cosine_weight
 		self.USE_ATT_FOR_QUERY = args.use_att_for_query
 		self.USE_MEAN_IN_LOSS = args.use_mean_in_loss
+		self.QUERY_SIMILARITY_STRATEGY = args.query_similarity_strategy
 
 		# other NN
 		self.wordemb = wordvec
@@ -39,6 +40,12 @@ class ConceptNet(nn.Module):
 			self.queries_softmax = nn.Softmax(dim = -1)
 
 		self.similarity_function = nn.CosineSimilarity(dim=-1)
+
+		if self.QUERY_SIMILARITY_STRATEGY == 'euclidean_distance':
+			self.query_similarity_function = nn.PairwiseDistance()
+		else:
+			self.query_similarity_function = nn.CosineSimilarity(dim=-1)
+		
 		
 
 	def forward(self, query, head, label, proposals_features, attrs, bboxes):
@@ -92,7 +99,7 @@ class ConceptNet(nn.Module):
 		prediction_query = torch.mean(prediction_query, dim=-2)  # [b, emb]
 		prediction_query_a = prediction_query.unsqueeze(1).repeat(1, batch_size, 1)  # [b, b, emb]
 		prediction_query_b = prediction_query.unsqueeze(0).repeat(batch_size, 1, 1)  # [b, b, emb]
-		query_similarity = torch.nn.functional.cosine_similarity(prediction_query_a, prediction_query_b, dim=-1)  # [b, b]
+		query_similarity = self.query_similarity_function(prediction_query_a, prediction_query_b)  # [b, b]
 
 		# attention sulle phrases
 		# attmap = torch.einsum('avd, bqd -> baqv', k_emb, p_emb)  # [B1, K, dim] x [B2, querys, dim] => [B2, B1, querys, K]
