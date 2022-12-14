@@ -86,10 +86,11 @@ if __name__ == '__main__':
 	torch.manual_seed(args.seed)
 	random.seed(args.seed)
 	np.random.seed(args.seed)
-	if args.dataset == "flickr30k":
-		save_path = os.path.join("output/flickr", args.save_name + '.pt')
-	else:
-		save_path = os.path.join("output/referit", args.save_name + '.pt')
+
+	output_dir = "output/flickr" if args.dataset == "flickr30k" else "output/referit"
+	save_path = os.path.join(output_dir, args.save_name + '.pt')
+	save_checkpoint = os.path.join(output_dir, args.save_name + '_{}.pt')
+	os.makedirs(output_dir, exist_ok=True)
 
 	# config
 	wordEmbedding = load_vocabulary("data/glove/glove.6B.300d.txt")
@@ -108,6 +109,6 @@ if __name__ == '__main__':
 		score = evaluate(test_loader, model, device_str=args.device)
 		print("untrained eval score:", score)
 	else:
-		best_model = train(model, loss, train_loader, test_loader, args, lr = args.lr, epochs = args.epochs, device_str=args.device)
+		best_model = train(model, loss, train_loader, test_loader, args, lr = args.lr, epochs = args.epochs, device_str=args.device, save_checkpoint=save_checkpoint)
 		torch.save(best_model.cpu().state_dict(), save_path)
 		print("save model to", save_path)
