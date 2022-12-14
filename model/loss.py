@@ -34,9 +34,10 @@ class WeakVtgLoss(nn.Module):
             
             loss = - torch.mean(pos_pred) + neg
         elif self.loss_strategy == 'all':
+            predictions_weighted = predictions * query_similarity
             pos_index = target.unsqueeze(-1)     # [b, 1]
             pos_pred = torch.gather(predictions, 1, pos_index).squeeze(-1)  # [b]
-            neg_pred = (torch.sum(predictions, dim=-1) - pos_pred) / (batch_size - 1)   # [b]
+            neg_pred = (torch.sum(predictions_weighted, dim=-1) - pos_pred) / (batch_size - 1)   # [b]
             loss = - torch.mean(pos_pred)  + torch.mean(neg_pred)
         elif self.loss_strategy == 'ce':
             loss = self.CE_loss(predictions, target)
