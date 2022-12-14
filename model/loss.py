@@ -27,8 +27,8 @@ class WeakVtgLoss(nn.Module):
             pos_pred = torch.gather(predictions, 1, pos_index).squeeze(-1)
             neg_pred = torch.gather(predictions, 1, neg_index).squeeze(-1)
             
-            w = torch.gather(query_similarity, -1, neg_index)  # [b, 1]
-            w = torch.gather(w, 0, pos_index).squeeze(-1)      # [b]
+            w = torch.gather(query_similarity, dim=-1,index= neg_index)  # [b, 1]
+            w = torch.gather(w, dim=0, index=pos_index).squeeze(-1)      # [b]
 
             neg = torch.sum(neg_pred * w) / torch.sum(w)
             
