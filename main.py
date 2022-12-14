@@ -5,6 +5,7 @@ import warnings
 
 import numpy as np
 import torch
+import wandb
 from torch.utils.data import DataLoader
 
 from model.dataset_flickr import Flickr30Dataset
@@ -79,6 +80,8 @@ def parse_args():
 if __name__ == '__main__':
 	args = parse_args()
 	print(args)
+
+	wandb.init(project="weakvg", entity="weakly-guys", config=vars(args))
 
 	# params and seeds
 	torch.manual_seed(args.seed)
