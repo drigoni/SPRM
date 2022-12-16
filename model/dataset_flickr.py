@@ -1,3 +1,4 @@
+from typing import List
 import _pickle as cPickle
 import json
 import os
@@ -18,13 +19,16 @@ import random
 
 
 class Flickr30Dataset(Dataset):
-	def __init__(self, wordEmbedding, name = 'train', dataroot = 'data/flickr30k/',  train_fract=1.0):
+	def __init__(self, wordEmbedding, name = 'train', dataroot = 'data/flickr30k/',  train_fract=1.0, do_spellchecker=False):
 		super(Flickr30Dataset, self).__init__()
 		print("Loading flickr30k dataset. Split: ", name)
 		self.indexer = wordEmbedding.word_indexer
-		self.entries, self.img_id2idx = load_dataset(name, dataroot, train_fract=train_fract)
-		self.class_labels = load_boxes_classes('data/objects_vocab.txt', word_embedding=wordEmbedding, word_indexer=self.indexer, do_spellchecker=False)
+		print("Loading entries...")
+		self.entries, self.img_id2idx = load_dataset(name, dataroot, train_fract=train_fract, do_spellchecker=do_spellchecker)
+		print("Loading classes...")
+		self.class_labels = load_boxes_classes('data/objects_vocab.txt', word_embedding=wordEmbedding, word_indexer=self.indexer, do_spellchecker=do_spellchecker)
 		# img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
+		print("Loading features...")
 		h5_path = os.path.join(dataroot, '%s_features_compress.hdf5' % name)
 
 		with h5py.File(h5_path, 'r') as hf:
@@ -220,11 +224,12 @@ def load_train_flickr30k(dataroot, img_id2idx, obj_detection, do_spellchecker=Fa
 
 				# correct phrase
 				if do_spellchecker:
-					# todo: this correct just one word, not a phrase
-					phrase_corrected = spell.correction(phrase)
-					if phrase_corrected is not None:
-						print(phrase, phrase_corrected)
-						phrase = spell.correction(phrase)
+					words: List[str] = phrase.split(' ')
+					words_corrected = [spell.correction(word) or word for word in words]
+					phrase_corrected = ' '.join(words_corrected)
+					if phrase != phrase_corrected:
+						print(phrase, "->", phrase_corrected)
+						phrase = phrase_corrected
 
 				# select heads. TODO: just first head of the query
 				# tmp_head = ''
@@ -269,22 +274,20 @@ def load_boxes_classes(
 
 	# correct phrase
 	if do_spellchecker:
-		new_labels = []
-		spell = SpellChecker()
-		for label in labels:
+		print("Spell checking labels...")
+		spell: SpellChecker = SpellChecker()
+		for i in range(len(labels)):
+			label = labels[i]
 			label_corrected = spell.correction(label)
 			if label_corrected is not None:
-				new_labels.append(label_corrected)
-			else:
-				new_labels.append(label)
-	else:
-		new_labels = labels
+				labels[i] = label_corrected
 	
 	# correct labels made up of multiple words e.g. "bus stop" and with different
 	# variants e.g. "stop sign,stopsign"
 	if word_indexer is not None and word_embedding is not None:
-		for i in range(len(new_labels)):
-			label = new_labels[i]
+		print("Correcting oov label embeddings...")
+		for i in range(len(labels)):
+			label = labels[i]
 
 			if word_indexer.contains(label):
 				continue
@@ -308,9 +311,9 @@ def load_boxes_classes(
 				added_idx = word_indexer.add_and_get_index(label)
 				word_embedding.vectors = np.insert(word_embedding.vectors, added_idx, label_embedding, axis=0)
 
-	return new_labels
+	return labels
 
-def load_dataset(name = 'train', dataroot = 'data/flickr30k/', train_fract=1.0):
+def load_dataset(name = 'train', dataroot = 'data/flickr30k/', train_fract=1.0, do_spellchecker=False):
 	obj_detection_dict = json.load(open("data/flickr30k/%s_detection_dict.json" % name, "r"))
 	# n_objects = 0
 	# classes = set()
@@ -329,7 +332,7 @@ def load_dataset(name = 'train', dataroot = 'data/flickr30k/', train_fract=1.0):
 		subset_idx = random.sample([i for i in img_id2idx.keys()], int(n_subset))
 		img_id2idx = {key: img_id2idx[key] for key in subset_idx}
 
-	entries = load_train_flickr30k(dataroot, img_id2idx, obj_detection_dict, do_spellchecker=False)
+	entries = load_train_flickr30k(dataroot, img_id2idx, obj_detection_dict, do_spellchecker=do_spellchecker)
 	return entries, img_id2idx
 
 

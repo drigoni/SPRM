@@ -16,10 +16,10 @@ from utils.utils import load_vocabulary, init_net
 def get_datasets(args):
 	test_split = "test"
 	if args.dataset == "flickr30k":
-		test_dset = Flickr30Dataset(wordEmbedding, test_split, train_fract=args.train_fract)
+		test_dset = Flickr30Dataset(wordEmbedding, test_split, train_fract=args.train_fract, do_spellchecker=args.do_spellchecker)
 	else:
-		test_dset = ReferitDataset(wordEmbedding, test_split, train_fract=args.train_fract)
-	return train_dset, test_dset
+		test_dset = ReferitDataset(wordEmbedding, test_split, train_fract=args.train_fract, do_spellchecker=args.do_spellchecker)
+	return test_dset
 
 
 def parse_args():
@@ -41,6 +41,7 @@ def parse_args():
 	parser.add_argument('--word_emb_dim', type= int, default=300)
 	parser.add_argument('--feature_dim', type= int, default=2048)
 	parser.add_argument('--cosine_weight', type=float, default=0.5)
+	parser.add_argument('--do_spellchecker', type="store_true", default=False)
 	parser.add_argument('--use_att_for_query', action = 'store_true', help = "Disable LSTM for query features and use attention.")
 	parser.add_argument('--use_mean_in_loss', action = 'store_true', help = "Consider all the couple <query, box> in the loss calculation.")
 	parser.add_argument('--MATnet', action = 'store_true', help = "True when we want to use the original model.")
