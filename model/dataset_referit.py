@@ -205,7 +205,7 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 	return entries
 
 
-def load_dataset(name = 'train', dataroot = 'data/referit/', train_fract=1.0):
+def load_dataset(name = 'train', dataroot = 'data/referit/', train_fract=1.0, do_spellchecker=False):
 	obj_detection_dict = json.load(open("data/referit/%s_detection_dict.json" % name, "r"))
 	img_id2idx = cPickle.load(open(os.path.join(dataroot, '%s_imgid2idx.pkl' % name), 'rb'))
 	ref_ann, ref_inst_ann, annotations = load_referit_annotations(dataroot + "refer/data/")
@@ -246,7 +246,7 @@ def load_dataset(name = 'train', dataroot = 'data/referit/', train_fract=1.0):
 		subset_idx = random.sample([i for i in img_id2idx.keys()], int(n_subset))
 		img_id2idx = {key: img_id2idx[key] for key in subset_idx}
 
-	entries = load_train_referit(dataroot, img_id2idx, obj_detection_dict, annotations_dict, do_spellchecker=False)
+	entries = load_train_referit(dataroot, img_id2idx, obj_detection_dict, annotations_dict, do_spellchecker=do_spellchecker)
 	return entries, img_id2idx
 
 
