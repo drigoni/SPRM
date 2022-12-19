@@ -9,7 +9,7 @@
       "type": "python",
       "request": "launch",
       "program": "main.py",
-      "args": ["--word_emb_dim=300", "--emb_dim=300", "--batch=4", "--loss_strategy=luca", "--do_spellchecker", "--do_oov"],
+      "args": ["--word_emb_dim=300", "--emb_dim=300", "--batch=4", "--loss_strategy=luca", "--do_spellchecker", "--do_oov", "--dry_run"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "env": {
@@ -22,7 +22,7 @@
       "type": "python",
       "request": "launch",
       "program": "main.py",
-      "args": ["--word_emb_dim=300", "--emb_dim=300", "--batch=4", "--loss_strategy=luca", "--do_spellchecker", "--do_oov", "--dataset=referit"],
+      "args": ["--word_emb_dim=300", "--emb_dim=300", "--batch=4", "--loss_strategy=luca", "--do_spellchecker", "--do_oov", "--dry_run", "--dataset=referit"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "env": {
