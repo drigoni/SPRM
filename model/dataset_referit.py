@@ -177,13 +177,18 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 			target_bboxes = ann['bbox']
 			# print(target_bboxes)
 
-			## TODO: correct phrase
-			#if do_spellchecker:
-			#	# todo: this correct just one word, not a phrase
-			#	phrase_corrected = spell.correction(phrase)
-			#	if phrase_corrected is not None:
-			#		print(phrase, phrase_corrected)
-			#		phrase = spell.correction(phrase)
+			# correct phrase
+			if do_spellchecker:
+				query_corrected = []
+				for noun_phrase in query:
+					words = noun_phrase.split(' ')
+					words_corrected = [spell.correction(word) or word for word in words]
+					noun_phrase_corrected = ' '.join(words_corrected)
+					query_corrected.append(noun_phrase_corrected)
+				if query != query_corrected:
+					print(query, "->", query_corrected)
+					query = query_corrected
+
 			head = []
 
 			# NOTE: flickr30k, for each query, has associated multiple bounding target boxes 
