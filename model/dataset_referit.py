@@ -21,7 +21,7 @@ import json
 import pickle as pickle
 from collections import defaultdict
 
-from dataset import load_boxes_classes
+from model.dataset import load_boxes_classes
 
 
 class ReferitDataset(Dataset):

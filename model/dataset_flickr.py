@@ -4,6 +4,7 @@ import json
 import os
 import re
 from xml.etree.ElementTree import parse
+import logging
 
 import h5py
 import numpy as np
@@ -17,16 +18,18 @@ from spellchecker import SpellChecker
 import spacy
 import random
 
+from model.dataset import load_boxes_classes
+
 
 class Flickr30Dataset(Dataset):
-	def __init__(self, wordEmbedding, name = 'train', dataroot = 'data/flickr30k/',  train_fract=1.0, do_spellchecker=False):
+	def __init__(self, wordEmbedding, name = 'train', dataroot = 'data/flickr30k/',  train_fract=1.0, do_spellchecker=False, do_oov=False):
 		super(Flickr30Dataset, self).__init__()
 		print("Loading flickr30k dataset. Split: ", name)
 		self.indexer = wordEmbedding.word_indexer
 		print("Loading entries...")
 		self.entries, self.img_id2idx = load_dataset(name, dataroot, train_fract=train_fract, do_spellchecker=do_spellchecker)
 		print("Loading classes...")
-		self.class_labels = load_boxes_classes('data/objects_vocab.txt', word_embedding=wordEmbedding, word_indexer=self.indexer, do_spellchecker=do_spellchecker)
+		self.class_labels = load_boxes_classes('data/objects_vocab.txt', word_embedding=wordEmbedding, word_indexer=self.indexer, do_spellchecker=do_spellchecker, do_oov=do_oov)
 		# img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
 		print("Loading features...")
 		h5_path = os.path.join(dataroot, '%s_features_compress.hdf5' % name)
@@ -161,8 +164,12 @@ def load_train_flickr30k(dataroot, img_id2idx, obj_detection, do_spellchecker=Fa
 		phrase_file = os.path.join(dataroot, 'Flickr30kEntities/Sentences/%d.txt' % image_id)
 		anno_file = os.path.join(dataroot, 'Flickr30kEntities/Annotations/%d.xml' % image_id)
 
-		with open(phrase_file, 'r', encoding = 'utf-8') as f:
-			sents = [x.strip() for x in f]
+		try:
+			with open(phrase_file, 'r', encoding = 'utf-8') as f:
+				sents = [x.strip() for x in f]
+		except:
+			logging.warning(f'Cannot open {phrase_file}, skipping...')
+			continue
 
 		# Parse Annotation
 		root = parse(anno_file).getroot()
@@ -261,57 +268,6 @@ def load_train_flickr30k(dataroot, img_id2idx, obj_detection, do_spellchecker=Fa
 			entries.append(entry)
 	return entries
 
-def load_boxes_classes(
-		file_classes = 'data/objects_vocab.txt',
-		word_embedding=None,
-		word_indexer=None,
-		do_spellchecker=False
-):
-	# read labels
-	with open(file_classes, 'r') as f:
-		data = f.readlines()
-	labels = [label.strip() for label in data]
-
-	# correct phrase
-	if do_spellchecker:
-		print("Spell checking labels...")
-		spell: SpellChecker = SpellChecker()
-		for i in range(len(labels)):
-			label = labels[i]
-			label_corrected = spell.correction(label)
-			if label_corrected is not None:
-				labels[i] = label_corrected
-	
-	# correct labels made up of multiple words e.g. "bus stop" and with different
-	# variants e.g. "stop sign,stopsign"
-	if word_indexer is not None and word_embedding is not None:
-		print("Correcting oov label embeddings...")
-		for i in range(len(labels)):
-			label = labels[i]
-
-			if word_indexer.contains(label):
-				continue
-		
-			label_parts = label.split(",")  # multiple variants
-			label_parts_embedding = []
-
-			for label_part in label_parts:
-				label_words = label_part.split(" ")  # multiple words
-				label_words_embedding = [word_embedding.get_embedding(word) for word in label_words if word_indexer.contains(word)]
-
-				if len(label_words_embedding) > 0:
-					label_part_embedding = np.mean(label_words_embedding, axis=0).reshape(-1)
-					label_parts_embedding.append(label_part_embedding)
-			
-			# we found some words for each label part, then we combine them and
-			# add the label to the word embedding along with its new embedding
-			if len(label_parts_embedding) > 0:
-				label_embedding = np.mean(label_parts_embedding, axis=0).reshape(-1)
-
-				added_idx = word_indexer.add_and_get_index(label)
-				word_embedding.vectors = np.insert(word_embedding.vectors, added_idx, label_embedding, axis=0)
-
-	return labels
 
 def load_dataset(name = 'train', dataroot = 'data/flickr30k/', train_fract=1.0, do_spellchecker=False):
 	obj_detection_dict = json.load(open("data/flickr30k/%s_detection_dict.json" % name, "r"))
