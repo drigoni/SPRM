@@ -21,15 +21,20 @@ import json
 import pickle as pickle
 from collections import defaultdict
 
+from dataset import load_boxes_classes
 
 
 class ReferitDataset(Dataset):
-	def __init__(self, wordEmbedding, name = 'train', dataroot = 'data/referit/',  train_fract=1.0):
+	def __init__(self, wordEmbedding, name = 'train', dataroot = 'data/referit/',  train_fract=1.0, do_spellchecker=False, do_oov=False):
 		super(ReferitDataset, self).__init__()
 		print("Loading Referit dataset. Split: ", name)
-		self.entries, self.img_id2idx, self.class_labels = load_dataset(name, dataroot, train_fract=train_fract)
-		# img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
 		self.indexer = wordEmbedding.word_indexer
+		print("Loading entries...")
+		self.entries, self.img_id2idx = load_dataset(name, dataroot, train_fract=train_fract, do_spellchecker=do_spellchecker)
+		print("Loading classes...")
+		self.class_labels = load_boxes_classes('data/objects_vocab.txt', word_embedding=wordEmbedding, word_indexer=self.indexer, do_spellchecker=do_spellchecker, do_oov=do_oov)
+		# img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
+		print("Loading features...")
 		h5_path = os.path.join(dataroot, '%s_features_compress.hdf5' % name)
 
 		with h5py.File(h5_path, 'r') as hf:
@@ -195,28 +200,6 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 	return entries
 
 
-def load_boxes_classes(file_classes = 'data/objects_vocab.txt', do_spellchecker=False):
-	# read labels
-	with open(file_classes, 'r') as f:
-		data = f.readlines()
-	labels = [label.strip() for label in data]
-
-	# correct phrase
-	if do_spellchecker:
-		new_labels = []
-		spell = SpellChecker()
-		for label in labels:
-			label_corrected = spell.correction(label)
-			if label_corrected is not None:
-				new_labels.append(label_corrected)
-			else:
-				new_labels.append(label)
-	else:
-		new_labels = labels
-
-	return new_labels
-
-
 def load_dataset(name = 'train', dataroot = 'data/referit/', train_fract=1.0):
 	obj_detection_dict = json.load(open("data/referit/%s_detection_dict.json" % name, "r"))
 	img_id2idx = cPickle.load(open(os.path.join(dataroot, '%s_imgid2idx.pkl' % name), 'rb'))
@@ -259,8 +242,7 @@ def load_dataset(name = 'train', dataroot = 'data/referit/', train_fract=1.0):
 		img_id2idx = {key: img_id2idx[key] for key in subset_idx}
 
 	entries = load_train_referit(dataroot, img_id2idx, obj_detection_dict, annotations_dict, do_spellchecker=False)
-	class_labels = load_boxes_classes('data/objects_vocab.txt', do_spellchecker=False)
-	return entries, img_id2idx, class_labels
+	return entries, img_id2idx
 
 
 def load_referit_annotations(data_root):
