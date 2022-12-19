@@ -64,6 +64,7 @@ def parse_args():
 						choices=['luca', 'all', 'ce'])
 	parser.add_argument('--do_spellchecker', action="store_true", default=False)
 	parser.add_argument('--do_oov', action="store_true", default=False)
+	parser.add_argument('--do_negative_weighting', action="store_true", default=False)
 	parser.add_argument('--emb_dim', type= int, default=300)
 	parser.add_argument('--word_emb_dim', type= int, default=300)
 	parser.add_argument('--feature_dim', type= int, default=2048)
