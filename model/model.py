@@ -22,6 +22,7 @@ class ConceptNet(nn.Module):
 		self.USE_ATT_FOR_QUERY = args.use_att_for_query
 		self.USE_MEAN_IN_LOSS = args.use_mean_in_loss
 		self.SIMILARITY_STRATEGY = args.similarity_strategy
+		self.USE_HEAD_FOR_QUERY_EMBEDDING = args.use_head_for_query_embedding
 
 		# other NN
 		self.wordemb = wordvec
@@ -62,9 +63,11 @@ class ConceptNet(nn.Module):
 		n_queries = query.shape[1]
 		n_proposals = proposals_features.shape[1]
 		# build variables
-		bool_words = torch.greater(query, 0).type(torch.long)					# [B, query, words]
+		bool_words = torch.greater(query, 0).type(torch.long)							# [B, query, words]
+		bool_heads = torch.greater(head, 0).type(torch.long)							# [B, query, words]
 		bool_queries = torch.any(bool_words, dim=-1).type(torch.long)			# [B, query]
-		num_words = torch.sum(bool_words, dim=-1)								# [B, query]
+		num_words = torch.sum(bool_words, dim=-1)													# [B, query]
+		num_queries = torch.sum(bool_queries, dim=-1)											# [B]
 		bool_proposals = torch.greater(bboxes, 0).type(torch.long)				# [B, proposals, 5]
 		bool_proposals = torch.any(bool_proposals, dim=-1).type(torch.long)		# [B, proposals]
 		num_proposal = torch.sum(bool_proposals, dim=-1)						# [B]
@@ -76,7 +79,7 @@ class ConceptNet(nn.Module):
 
 		# get embeddings. NOTE: inputs padded with 0
 		q_emb, k_emb = self._encode(query, label, attrs, head, bool_words, bool_proposals)
-		q_emb_freezed, k_emb_freezed = self._encode_freezed(query, label, attrs, head, bool_words, bool_proposals)
+		q_emb_freezed, k_emb_freezed, head_emb_freezed = self._encode_freezed(query, label, attrs, head, bool_words, bool_proposals)
 		# get features. NOTE: inputs padded with 0
 		v_feat = self._get_image_features(bboxes, proposals_features, k_emb, bool_proposals, 1)
 		if self.USE_ATT_FOR_QUERY is False:
@@ -91,12 +94,14 @@ class ConceptNet(nn.Module):
 		prediction_scores = self._get_predictions(q_feat, v_feat, concepts_similarity, mask, self.PREDICTION_WEIGHT)
 
 		# get query similarity
-		prediction_query = q_emb_freezed                            # [b, query, word, emb]
-		prediction_query = torch.mean(prediction_query, dim=-2)  # [b, query, emb]
-		prediction_query = torch.mean(prediction_query, dim=-2)  # [b, emb]
-		prediction_query_a = prediction_query.unsqueeze(1).repeat(1, batch_size, 1)  # [b, b, emb]
-		prediction_query_b = prediction_query.unsqueeze(0).repeat(batch_size, 1, 1)  # [b, b, emb]
-		query_similarity = self.similarity_function(prediction_query_a, prediction_query_b)  # [b, b]
+		if self.USE_HEAD_FOR_QUERY_EMBEDDING:
+			new_q_emb = head_emb_freezed
+			new_bool_words = bool_heads
+		else:
+			new_q_emb = q_emb_freezed
+			new_bool_words = bool_words
+		new_bool_queries = torch.any(new_bool_words, dim=-1).type(torch.long)  # [B, query]
+		query_similarity = self._get_query_similarity(new_q_emb, new_bool_words, new_bool_queries)  # [b, b]
 
 		# attention sulle phrases
 		# attmap = torch.einsum('avd, bqd -> baqv', k_emb, p_emb)  # [B1, K, dim] x [B2, querys, dim] => [B2, B1, querys, K]
@@ -359,18 +364,49 @@ class ConceptNet(nn.Module):
 		mask_words = bool_words.unsqueeze(-1).eq(0)
 		mask_proposals = bool_proposals.unsqueeze(-1).eq(0)
 
+		bool_head = torch.greater(head, 0).type(torch.long)
+		mask_head = bool_head.unsqueeze(-1).eq(0)
+
 		q_emb = self.wv_freezed(query)
 		k_emb = self.wv_freezed(label)
 		# attr_emb = self.wv_freezed(attrs)
-		# head_emb = self.wv_freezed(query) # TODO: risolvi
+		head_emb = self.wv_freezed(head)
 
 		# mask
 		q_emb = q_emb.masked_fill(mask_words, 0)
 		k_emb = k_emb.masked_fill(mask_proposals, 0)
+		head_emb = head_emb.masked_fill(mask_head, 0)
 
-		return q_emb, k_emb
+		return q_emb, k_emb, head_emb
 
+	def _get_query_similarity(self, q_emb, bool_words, bool_queries):
+		"""
+		:param q_emb: [b, query, words, emb]
+		:param bool_words: [b, query, words]
+		:param bool_queries: [b, query]
+		:return: [b, query, query]
+		"""
+		batch_size = q_emb.shape[0]
 
+		num_words = torch.sum(bool_words, dim=-1)  # [b, query]
+		num_queries = torch.sum(bool_queries, dim=-1)  # [b]
+
+		# averaged query representation over words
+		query_repr = torch.sum(q_emb, dim=-2)                                 # [b, query, emb]
+		query_repr = query_repr / num_words.unsqueeze(-1)                             # [b, query, emb]
+		query_repr = query_repr.masked_fill((num_words == 0).unsqueeze(-1), value=0)  # [b, query, emb]
+
+		# averaged query representation over phrases
+		query_repr = torch.sum(query_repr, dim=-2)                                      # [b, emb]
+		query_repr = query_repr / num_queries.unsqueeze(-1)                             # [b, emb]
+		query_repr = query_repr.masked_fill((num_queries == 0).unsqueeze(-1), value=0)  # [b, emb]
+
+		query_repr_a = query_repr.unsqueeze(1).repeat(1, batch_size, 1)  # [b, b, emb]
+		query_repr_b = query_repr.unsqueeze(0).repeat(batch_size, 1, 1)  # [b, b, emb]
+		
+		query_similarity = self.similarity_function(query_repr_a, query_repr_b)    # [b, b]
+					
+		return query_similarity
 
 
 class MLP(nn.Module):

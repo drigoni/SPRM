@@ -1,4 +1,5 @@
 import numpy as np
+import spacy
 from spellchecker import SpellChecker
 
 
@@ -62,3 +63,19 @@ def load_boxes_classes(
                 )
 
     return labels
+
+
+def get_spacy_nlp():
+    """
+    Returns a `nlp` object with custom rules for "/" and "-" prefixes.
+    Resources:
+    - [Customizing spaCy’s Tokenizer class](https://spacy.io/usage/linguistic-features#native-tokenizers)
+    - [Modifying existing rule sets](https://spacy.io/usage/linguistic-features#native-tokenizer-additions)
+    """
+    nlp = spacy.load("en_core_web_sm")
+
+    prefixes = nlp.Defaults.prefixes + [r"""/""", r"""-"""]
+    prefix_regex = spacy.util.compile_prefix_regex(prefixes)
+    nlp.tokenizer.prefix_search = prefix_regex.search
+
+    return nlp

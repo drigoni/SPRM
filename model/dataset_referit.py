@@ -21,16 +21,16 @@ import json
 import pickle as pickle
 from collections import defaultdict
 
-from model.dataset import load_boxes_classes
+from model.dataset import load_boxes_classes, get_spacy_nlp
 
 
 class ReferitDataset(Dataset):
-	def __init__(self, wordEmbedding, name = 'train', dataroot = 'data/referit/',  train_fract=1.0, do_spellchecker=False, do_oov=False):
+	def __init__(self, wordEmbedding, name = 'train', dataroot = 'data/referit/',  train_fract=1.0, do_spellchecker=False, do_oov=False, do_head=False):
 		super(ReferitDataset, self).__init__()
 		print("Loading Referit dataset. Split: ", name)
 		self.indexer = wordEmbedding.word_indexer
 		print("Loading entries...")
-		self.entries, self.img_id2idx = load_dataset(name, dataroot, train_fract=train_fract, do_spellchecker=do_spellchecker)
+		self.entries, self.img_id2idx = load_dataset(name, dataroot, train_fract=train_fract, do_spellchecker=do_spellchecker, do_head=do_head)
 		print("Loading classes...")
 		self.class_labels = load_boxes_classes('data/objects_vocab.txt', word_embedding=wordEmbedding, word_indexer=self.indexer, do_spellchecker=do_spellchecker, do_oov=do_oov)
 		# img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
@@ -103,11 +103,13 @@ class ReferitDataset(Dataset):
 
 		heads_idx = []
 		for h in heads:
-			h = h.lower()
-			head_idx = max(self.indexer.index_of(h), 1)
-			heads_idx.append(head_idx)
+			h = h.lower().split()
+			lis = [0] * lens
+			for i in range(min(len(h), lens)):
+				lis[i] = max(self.indexer.index_of(h[i]), 1)
+			heads_idx.append(lis)
 		while (len(heads_idx) < Q):
-			heads_idx.append(0)
+			heads_idx.append([0] * lens)
 		heads_idx = heads_idx[:Q]
 
 		padbox = [0, 0, 0, 0]
@@ -152,7 +154,7 @@ class ReferitDataset(Dataset):
 		return len(self.entries)
 
 
-def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spellchecker=False):
+def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spellchecker=False, do_head=False):
 	"""Load entries
 
 	img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
@@ -161,6 +163,9 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 	"""
 	if do_spellchecker:
 		spell = SpellChecker()
+	if do_head:
+		spacy_nlp = get_spacy_nlp()
+
 	entries = []
 
 
@@ -189,7 +194,15 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 					print(query, "->", query_corrected)
 					query = query_corrected
 
-			head = []
+			if do_head:
+				head = []
+				for noun_phrase in query:
+					doc = spacy_nlp(noun_phrase)
+					phrase_heads = [chunk.root.text for chunk in doc.noun_chunks]
+					if len(phrase_heads) == 0:
+						phrase_heads = [doc[-1].text]  # fallback to last word
+					phrase_head = ' '.join(phrase_heads)   # we treat multiple heads as a phrase
+					head.append(phrase_head)
 
 			# NOTE: flickr30k, for each query, has associated multiple bounding target boxes 
 			entry = {
@@ -205,7 +218,7 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 	return entries
 
 
-def load_dataset(name = 'train', dataroot = 'data/referit/', train_fract=1.0, do_spellchecker=False):
+def load_dataset(name = 'train', dataroot = 'data/referit/', train_fract=1.0, do_spellchecker=False, do_head=False):
 	obj_detection_dict = json.load(open("data/referit/%s_detection_dict.json" % name, "r"))
 	img_id2idx = cPickle.load(open(os.path.join(dataroot, '%s_imgid2idx.pkl' % name), 'rb'))
 	ref_ann, ref_inst_ann, annotations = load_referit_annotations(dataroot + "refer/data/")
@@ -246,7 +259,7 @@ def load_dataset(name = 'train', dataroot = 'data/referit/', train_fract=1.0, do
 		subset_idx = random.sample([i for i in img_id2idx.keys()], int(n_subset))
 		img_id2idx = {key: img_id2idx[key] for key in subset_idx}
 
-	entries = load_train_referit(dataroot, img_id2idx, obj_detection_dict, annotations_dict, do_spellchecker=do_spellchecker)
+	entries = load_train_referit(dataroot, img_id2idx, obj_detection_dict, annotations_dict, do_spellchecker=do_spellchecker, do_head=do_head)
 	return entries, img_id2idx
 
 
@@ -286,19 +299,3 @@ def load_referit_annotations(data_root):
 	ref_inst_ann = ref_inst['annotations']
 	annotations = get_annotations(ref_ann, ref_inst_ann)
 	return ref_ann, ref_inst_ann, annotations
-
-
-def get_spacy_nlp():
-    """
-    Returns a `nlp` object with custom rules for "/" and "-" prefixes.
-    Resources:
-    - [Customizing spaCy’s Tokenizer class](https://spacy.io/usage/linguistic-features#native-tokenizers)
-    - [Modifying existing rule sets](https://spacy.io/usage/linguistic-features#native-tokenizer-additions)
-    """
-    nlp = spacy.load('en_core_web_sm')
-
-    prefixes = nlp.Defaults.prefixes + [r"""/""", r"""-"""]
-    prefix_regex = spacy.util.compile_prefix_regex(prefixes)
-    nlp.tokenizer.prefix_search = prefix_regex.search
-
-    return nlp

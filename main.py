@@ -30,17 +30,17 @@ def get_datasets(args):
 		test_split = "val"
 
 	if args.dataset == "flickr30k":
-		test_dset = Flickr30Dataset(wordEmbedding, test_split, train_fract=args.train_fract, do_spellchecker=args.do_spellchecker, do_oov=args.do_oov)
+		test_dset = Flickr30Dataset(wordEmbedding, test_split, train_fract=args.train_fract, do_spellchecker=args.do_spellchecker, do_oov=args.do_oov, do_head=args.do_head)
 		if args.dry_run:
 			train_dset = test_dset
 		else:
-			train_dset = Flickr30Dataset(wordEmbedding, "train", train_fract=args.train_fract, do_spellchecker=args.do_spellchecker, do_oov=args.do_oov)
+			train_dset = Flickr30Dataset(wordEmbedding, "train", train_fract=args.train_fract, do_spellchecker=args.do_spellchecker, do_oov=args.do_oov, do_head=args.do_head)
 	else:
-		test_dset = ReferitDataset(wordEmbedding, test_split, train_fract=args.train_fract, do_spellchecker=args.do_spellchecker, do_oov=args.do_oov)
+		test_dset = ReferitDataset(wordEmbedding, test_split, train_fract=args.train_fract, do_spellchecker=args.do_spellchecker, do_oov=args.do_oov, do_head=args.do_head)
 		if args.dry_run:
 			train_dset = test_dset
 		else:
-			rain_dset = ReferitDataset(wordEmbedding, "train", train_fract=args.train_fract, do_spellchecker=args.do_spellchecker, do_oov=args.do_oov)
+			rain_dset = ReferitDataset(wordEmbedding, "train", train_fract=args.train_fract, do_spellchecker=args.do_spellchecker, do_oov=args.do_oov, do_head=args.do_head)
 	return train_dset, test_dset
 
 
@@ -72,6 +72,7 @@ def parse_args():
 	parser.add_argument('--do_spellchecker', action="store_true", default=False)
 	parser.add_argument('--do_oov', action="store_true", default=False)
 	parser.add_argument('--do_negative_weighting', action="store_true", default=False)
+	parser.add_argument('--do_head', action="store_true", default=False)
 	parser.add_argument('--dry_run', action="store_true", default=False)
 	parser.add_argument('--emb_dim', type= int, default=300)
 	parser.add_argument('--word_emb_dim', type= int, default=300)
@@ -82,6 +83,7 @@ def parse_args():
 	parser.add_argument('--MATnet', action = 'store_true', help = "True when we want to use the original model.")
 	parser.add_argument('--train_fract', type=float, default=1.0, help = "Fraction of training set to load for training.")
 	parser.add_argument('--similarity_strategy', type=str, default="cosine_similarity", choices=["euclidean_distance", "cosine_similarity"])
+	parser.add_argument('--use_head_for_query_embedding', action="store_true", default=False)
 
 	# debug mode
 	parser.add_argument('--debug', action = 'store_true')
