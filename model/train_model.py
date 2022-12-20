@@ -30,8 +30,8 @@ def train(model, loss_function, train_loader, test_loader, args, lr = 1e-4, epoc
 	optimizer = torch.optim.Adam(model.parameters(), lr = lr)
 
 	print("--- EVALUATION BEFORE TRAINING")
-	score, point_game_score = evaluate(test_loader, model, device_str)
-	print("Evaluation before training -> score: {}   point_game_score: {} .".format(score, point_game_score))
+	score, point_game_score, loss_val = evaluate(test_loader, model, loss_function, device_str)
+	print("Evaluation before training -> score: {}   point_game_score: {}  loss_val: {} .".format(score, point_game_score, loss_val))
 
 	# params for best model
 	best_model = None
@@ -71,8 +71,8 @@ def train(model, loss_function, train_loader, test_loader, args, lr = 1e-4, epoc
 
 		# evaluate
 		t2 = time.time()
-		score, point_game_score = evaluate(test_loader, model, device_str)
-		print("Evaluation -> time: {} | score: {}   point_game_score: {} .".format(time.time() - t2, score, point_game_score))
+		score, point_game_score, loss_val = evaluate(test_loader, model, loss_function, device_str)
+		print("Evaluation -> time: {} | score: {}   point_game_score: {}  loss_val: {} .".format(time.time() - t2, score, point_game_score, loss_val))
 
 		if score > best_score:
 			best_model = copy.deepcopy(model)
@@ -83,12 +83,13 @@ def train(model, loss_function, train_loader, test_loader, args, lr = 1e-4, epoc
 
 		wandb.log({	"loss": total_loss / n_batches,
 					"acc_val": score,
-					"point_acc_val": point_game_score
+					"point_acc_val": point_game_score,
+					"loss_val": loss_val,
 					})
 	return best_model
 
 
-def evaluate(test_loader, model, device_str='cuda'):
+def evaluate(test_loader, model, loss_function, device_str='cuda'):
 	# device
 	device = torch.device("cuda:0" if torch.cuda.is_available() and device_str == 'cuda' else "cpu")
 	use_gpu = torch.cuda.is_available()
@@ -96,21 +97,30 @@ def evaluate(test_loader, model, device_str='cuda'):
 	pred_bboxes_list = []
 	target_bboxes_list = []
 	num_query_list = []
+	n_batches = 0
+	total_loss = 0
 
 	model.eval()
 	for idx, labels, attrs, feature, query, bboxes, target_bboxes, num_obj, num_query, head in tqdm(test_loader):
+		n_batches += 1
+
 		if (use_gpu):
 			idx, labels, attrs, feature, query, bboxes, target_bboxes, num_obj, num_query, head = \
 			idx.to(device), labels.to(device), attrs.to(device), feature.to(device), query.to(device), bboxes.to(device), target_bboxes.to(device), num_obj.to(device), num_query.to(device), head.to(device)
 
-		prediction, prediction_loss, selected_bbox = model.predict(query, head, labels, feature, attrs, bboxes)		# [B, 32, 4]
+		prediction, prediction_loss, selected_bbox, target_pred, query_similarity = model.predict(query, head, labels, feature, attrs, bboxes)		# [B, 32, 4]
+
+		with torch.no_grad():
+			loss = loss_function(prediction_loss, target_pred, query_similarity)
+			total_loss += loss.item()
 
 		pred_bboxes_list += selected_bbox.cpu().tolist()
 		target_bboxes_list += target_bboxes.cpu().tolist()
 		num_query_list += num_query.cpu().tolist()
 	
 	score, point_game_score = evaluate_helper(pred_bboxes_list, target_bboxes_list, num_query_list)
-	return score, point_game_score
+	final_loss = total_loss / n_batches
+	return score, point_game_score, final_loss
 
 
 def evaluate_helper(pred_bboxes, target_bboxes, num_query):

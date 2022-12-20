@@ -130,7 +130,7 @@ class ConceptNet(nn.Module):
 		index_bbox =  prediction_labels.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, 1, 4)	# [B, n_query, 1, 4]
 		selected_bbox = torch.gather(bbox_ext, 2, index_bbox).squeeze(2)	# [B, n_query, 4]
 
-		return predictions, prediction_loss, selected_bbox
+		return predictions, prediction_loss, selected_bbox, target, query_similarity
 	
 	def get_predictions_for_loss(self, prediction_scores, bool_queries, bool_proposals, mask):
 		"""

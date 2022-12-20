@@ -5,6 +5,19 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "flickr (b=4, e=300, l=luca)",
+      "type": "python",
+      "request": "launch",
+      "program": "main.py",
+      "args": ["--word_emb_dim=300", "--emb_dim=300", "--batch=4", "--loss_strategy=luca", "--dry_run", "--device=cpu"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH":"${PYTHONPATH}:/home/lparolari/.miniconda3/envs/weakvg/bin",
+        "WANDB_MODE": "offline"
+      }
+    },
+    {
       "name": "flickr (b=4, e=300, l=luca, spell+oov)",
       "type": "python",
       "request": "launch",
