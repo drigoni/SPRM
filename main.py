@@ -81,7 +81,7 @@ def parse_args():
 	parser.add_argument('--use_mean_in_loss', action = 'store_true', help = "Consider all the couple <query, box> in the loss calculation.")
 	parser.add_argument('--MATnet', action = 'store_true', help = "True when we want to use the original model.")
 	parser.add_argument('--train_fract', type=float, default=1.0, help = "Fraction of training set to load for training.")
-	parser.add_argument('--query_similarity_strategy', type=str, default="cosine_similarity", choices=["euclidean_distance", "cosine_similarity"])
+	parser.add_argument('--similarity_strategy', type=str, default="cosine_similarity", choices=["euclidean_distance", "cosine_similarity"])
 
 	# debug mode
 	parser.add_argument('--debug', action = 'store_true')
