@@ -9,7 +9,7 @@
       "type": "python",
       "request": "launch",
       "program": "main.py",
-      "args": ["--word_emb_dim=300", "--emb_dim=300", "--batch=4", "--loss_strategy=luca", "--do_head", "--dry_run", "--device=cpu", "--similarity_strategy=euclidean_distance", "--dataset=referit"],
+      "args": ["--word_emb_dim=300", "--emb_dim=300", "--batch=4", "--loss_strategy=luca", "--dry_run", "--device=cpu"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "env": {

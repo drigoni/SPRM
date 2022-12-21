@@ -84,6 +84,8 @@ def parse_args():
 	parser.add_argument('--train_fract', type=float, default=1.0, help = "Fraction of training set to load for training.")
 	parser.add_argument('--similarity_strategy', type=str, default="cosine_similarity", choices=["euclidean_distance", "cosine_similarity"])
 	parser.add_argument('--use_head_for_query_embedding', action="store_true", default=False)
+	parser.add_argument('--image_net_dropout', type=float, default=0.0)
+	parser.add_argument('--query_net_dropout', type=float, default=0.0)
 
 	# debug mode
 	parser.add_argument('--debug', action = 'store_true')

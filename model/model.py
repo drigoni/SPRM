@@ -23,6 +23,8 @@ class ConceptNet(nn.Module):
 		self.USE_MEAN_IN_LOSS = args.use_mean_in_loss
 		self.SIMILARITY_STRATEGY = args.similarity_strategy
 		self.USE_HEAD_FOR_QUERY_EMBEDDING = args.use_head_for_query_embedding
+		self.IMAGE_NET_DROPOUT = args.image_net_dropout
+		self.QUERY_NET_DROPOUT = args.query_net_dropout
 
 		# other NN
 		self.wordemb = wordvec
@@ -32,12 +34,12 @@ class ConceptNet(nn.Module):
 
 		# NN image branch
 		self.linear_img = nn.Linear(20, 20)
-		self.img_mlp = MLP(self.IMG_FEATURES_DIM + 5, self.EMB_DIM, [], F.leaky_relu)
+		self.img_mlp = MLP(self.IMG_FEATURES_DIM + 5, self.EMB_DIM, [], F.leaky_relu, dropout=self.IMAGE_NET_DROPOUT)
 		# NN text branch
 		if self.USE_ATT_FOR_QUERY is False:
 			self.queries_rnn = nn.LSTM(self.WORD_EMB_DIM, self.EMB_DIM, num_layers=1, bidirectional=False, batch_first=False)
 		else:
-			self.queries_mlp = MLP(self.WORD_EMB_DIM, self.EMB_DIM, [self.EMB_DIM], F.leaky_relu)
+			self.queries_mlp = MLP(self.WORD_EMB_DIM, self.EMB_DIM, [self.EMB_DIM], F.leaky_relu, dropout=self.QUERY_NET_DROPOUT)
 			self.queries_softmax = nn.Softmax(dim = -1)
 
 		if self.SIMILARITY_STRATEGY == 'euclidean_distance':
@@ -264,6 +266,9 @@ class ConceptNet(nn.Module):
 		# back to batch size dimension
 		queries_x = queries_x.squeeze(1).view(batch_size, n_queries, emb_dim)              # [b, n_queries, dim]
 		queries_x = queries_x.masked_fill(mask, 0) 
+
+		if self.training:
+			queries_x = nn.Dropout(p=self.QUERY_NET_DROPOUT)(queries_x)
 		# normalize features
 		# queries_x_norm = F.normalize(queries_x, p=norm, dim=-1)
 		return queries_x
@@ -412,7 +417,8 @@ class ConceptNet(nn.Module):
 class MLP(nn.Module):
     def __init__(self, in_size: int, out_size: int, hid_sizes: List[int],
                  activation_function: Callable = F.relu,
-                 init_function: Callable = nn.init.xavier_normal_):
+                 init_function: Callable = nn.init.xavier_normal_,
+                 dropout=0.):
         super().__init__()
         self.in_size = in_size
         self.out_size = out_size
@@ -420,6 +426,7 @@ class MLP(nn.Module):
         self.activation_function = activation_function
         self.init_function = init_function
         self.layers = self.make_network_params()
+        self.dropout = nn.Dropout(p=dropout)
 
     def make_network_params(self):
         dims = [self.in_size] + self.hid_sizes + [self.out_size]
@@ -436,6 +443,8 @@ class MLP(nn.Module):
         acts = inputs
         for layer in self.layers:
             hid = layer(acts)
+            if self.training:
+              hid = self.dropout(hid)
             acts = self.activation_function(hid)
         last_hidden = hid
         return last_hidden
