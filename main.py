@@ -95,7 +95,7 @@ if __name__ == '__main__':
 	args = parse_args()
 	print(args)
 
-	wandb.init(project="weakvg", entity="weakly-guys", config=vars(args))
+	wandb.init(project="weakvg", entity="weakly_guys", config=vars(args))
 
 	# params and seeds
 	torch.manual_seed(args.seed)
