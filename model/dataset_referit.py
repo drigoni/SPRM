@@ -194,8 +194,8 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 					print(query, "->", query_corrected)
 					query = query_corrected
 
+			head = []
 			if do_head:
-				head = []
 				for noun_phrase in query:
 					doc = spacy_nlp(noun_phrase)
 					phrase_heads = [chunk.root.text for chunk in doc.noun_chunks]
