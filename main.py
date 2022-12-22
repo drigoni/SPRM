@@ -40,7 +40,7 @@ def get_datasets(args):
 		if args.dry_run:
 			train_dset = test_dset
 		else:
-			rain_dset = ReferitDataset(wordEmbedding, "train", train_fract=args.train_fract, do_spellchecker=args.do_spellchecker, do_oov=args.do_oov, do_head=args.do_head)
+			train_dset = ReferitDataset(wordEmbedding, "train", train_fract=args.train_fract, do_spellchecker=args.do_spellchecker, do_oov=args.do_oov, do_head=args.do_head)
 	return train_dset, test_dset
 
 
