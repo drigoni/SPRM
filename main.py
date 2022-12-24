@@ -16,7 +16,7 @@ from model.model import ConceptNet
 from model.model_MATnet import MATnet
 from model.loss import WeakVtgLoss
 from model.train_model import train, evaluate
-from utils.utils import load_vocabulary
+from utils.utils import load_vocabulary, init_net
 
 with warnings.catch_warnings():
 	warnings.filterwarnings("ignore", category = FutureWarning)
@@ -86,6 +86,7 @@ def parse_args():
 	parser.add_argument('--use_head_for_query_embedding', action="store_true", default=False)
 	parser.add_argument('--image_net_dropout', type=float, default=0.0)
 	parser.add_argument('--query_net_dropout', type=float, default=0.0)
+	parser.add_argument('--file', type = str)
 
 	# debug mode
 	parser.add_argument('--debug', action = 'store_true')
@@ -122,8 +123,10 @@ if __name__ == '__main__':
 		model = ConceptNet(wordEmbedding, args)
 	loss = WeakVtgLoss(args) 
 
-	if args.eval:
-		score = evaluate(test_loader, model, device_str=args.device)
+	if args.test_set:
+		if args.file:
+			init_net(model, args.file)
+		score = evaluate(test_loader, model, loss, device_str=args.device)
 		print("untrained eval score:", score)
 	else:
 		best_model = train(model, loss, train_loader, test_loader, args, lr = args.lr, epochs = args.epochs, device_str=args.device, save_checkpoint=save_checkpoint)

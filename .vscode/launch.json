@@ -42,6 +42,19 @@
         "PYTHONPATH":"${PYTHONPATH}:/home/lparolari/.miniconda3/envs/weakvg/bin",
         "WANDB_MODE": "offline"
       }
-    }
+    },
+    {
+      "name": "flickr test",
+      "type": "python",
+      "request": "launch",
+      "program": "main.py",
+      "args": ["--word_emb_dim=300", "--emb_dim=300", "--batch=4", "--loss_strategy=luca", "--device=cpu", "--dataset=flickr30k", "--file=/mnt/pegasus/home/lparolari/Data/weakvg/20221219_softmax-cw025_luca.pt", "--test_set", "--dry_run"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH":"${PYTHONPATH}:/home/lparolari/.miniconda3/envs/weakvg/bin",
+        "WANDB_MODE": "offline"
+      }
+    },
   ]
 }
