@@ -10,7 +10,8 @@ class WeakVtgLoss(nn.Module):
 		:param args: args from command line
 		"""
         # params
-        self.CE_loss = nn.CrossEntropyLoss(reduction = "none")
+        self.CE_loss_base = nn.CrossEntropyLoss(reduction = "mean")
+        self.CE_loss_weight = nn.CrossEntropyLoss(reduction = "none")
         self.loss_strategy = args.loss_strategy
         self.do_negative_weighting = args.do_negative_weighting
 
@@ -46,7 +47,7 @@ class WeakVtgLoss(nn.Module):
             neg_pred = (torch.sum(predictions, dim=-1) - pos_pred) / (batch_size - 1)   # [b]
             loss = - torch.mean(pos_pred)  + torch.mean(neg_pred)
         elif self.loss_strategy == 'ce':
-            loss = self.CE_loss(predictions, target)
+            loss = self.CE_loss_base(predictions, target)
         else:
             print("Error, loss_strategy '{}' not defined. ".format(self.loss_strategy))
             exit(1)
@@ -76,7 +77,7 @@ class WeakVtgLoss(nn.Module):
             neg_pred = (torch.sum(predictions_weighted, dim=-1) - pos_pred) / (torch.sum(query_similarity, dim=-1) - 1)   # [b]
             loss = - torch.mean(pos_pred)  + torch.mean(neg_pred)
         elif self.loss_strategy == 'ce':
-            loss = self.CE_loss(predictions, target)  # [b]
+            loss = self.CE_loss_weight(predictions, target)  # [b]
             
             neg_weight = torch.sum(query_similarity, dim=-1) - 1   # [b]
             
