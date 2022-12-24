@@ -5,11 +5,11 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "flickr (b=4, e=300, l=luca)",
+      "name": "flickr (b=4, e=50, l=luca)",
       "type": "python",
       "request": "launch",
       "program": "main.py",
-      "args": ["--word_emb_dim=300", "--emb_dim=300", "--batch=4", "--loss_strategy=luca", "--dry_run", "--device=cpu"],
+      "args": ["--word_emb_dim=50", "--emb_dim=50", "--batch=4", "--loss_strategy=luca", "--dry_run", "--device=cpu"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "env": {

@@ -110,7 +110,7 @@ if __name__ == '__main__':
 	os.makedirs(output_dir, exist_ok=True)
 
 	# config
-	wordEmbedding = load_vocabulary("data/glove/glove.6B.300d.txt")
+	wordEmbedding = load_vocabulary(f"data/glove/glove.6B.{args.word_emb_dim}d.txt")
 	# get dataset
 	train_dset, test_dset = get_datasets(args)
 	train_loader = DataLoader(train_dset, batch_size = args.batch, num_workers = 4, drop_last = True, shuffle = True)

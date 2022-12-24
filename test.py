@@ -55,7 +55,7 @@ def parse_args():
 
 if __name__ == '__main__':
 	args = parse_args()
-	wordEmbedding = load_vocabulary("data/glove/glove.6B.300d.txt")
+	wordEmbedding = load_vocabulary(f"data/glove/glove.6B.{args.word_emb_dim}d.txt")
 	test_dset = get_datasets(args)
 
 	test_loader = DataLoader(test_dset, batch_size = 32, num_workers = 4, drop_last = True, shuffle = True)
