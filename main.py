@@ -133,6 +133,6 @@ if __name__ == '__main__':
 		score = evaluate(test_loader, model, loss, device_str=args.device)
 		print("untrained eval score:", score)
 	else:
-		best_model = train(model, loss, train_loader, test_loader, args, lr = args.lr, epochs = args.epochs, device_str=args.device, save_checkpoint=save_checkpoint if do_checkpoint else None)
+		best_model = train(model, loss, train_loader, test_loader, args, lr = args.lr, epochs = args.epochs, device_str=args.device, save_checkpoint=save_checkpoint if args.do_checkpoint else None)
 		torch.save(best_model.cpu().state_dict(), save_path)
 		print("save model to", save_path)
