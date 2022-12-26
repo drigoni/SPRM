@@ -9,7 +9,7 @@
       "type": "python",
       "request": "launch",
       "program": "main.py",
-      "args": ["--word_emb_dim=50", "--emb_dim=50", "--batch=4", "--loss_strategy=ce", "--dry_run", "--device=cpu", "--dataset=referit"],
+      "args": ["--word_emb_dim=50", "--emb_dim=50", "--batch=4", "--loss_strategy=ce", "--dry_run", "--device=cpu", "--dataset=referit", "--use_bidirectional_lstm", "--lstm_num_layers=2"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "env": {
@@ -48,7 +48,7 @@
       "type": "python",
       "request": "launch",
       "program": "main.py",
-      "args": ["--word_emb_dim=300", "--emb_dim=300", "--batch=4", "--loss_strategy=luca", "--device=cpu", "--dataset=flickr30k", "--file=/mnt/pegasus/home/lparolari/Data/weakvg/20221219_softmax-cw025_luca.pt", "--test_set", "--dry_run"],
+      "args": ["--word_emb_dim=300", "--emb_dim=300", "--batch=4", "--loss_strategy=luca", "--device=cuda", "--dataset=flickr30k", "--file=/mnt/pegasus/home/lparolari/Data/weakvg/20221219_softmax-cw025_luca.pt", "--test_set", "--dry_run"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "env": {

@@ -25,6 +25,8 @@ class ConceptNet(nn.Module):
 		self.USE_HEAD_FOR_QUERY_EMBEDDING = args.use_head_for_query_embedding
 		self.IMAGE_NET_DROPOUT = args.image_net_dropout
 		self.QUERY_NET_DROPOUT = args.query_net_dropout
+		self.USE_BIDIRECTIONAL_LSTM = args.use_bidirectional_lstm
+		self.LSTM_NUM_LAYERS = args.lstm_num_layers
 
 		# other NN
 		self.wordemb = wordvec
@@ -37,7 +39,7 @@ class ConceptNet(nn.Module):
 		self.img_mlp = MLP(self.IMG_FEATURES_DIM + 5, self.EMB_DIM, [], F.leaky_relu, dropout=self.IMAGE_NET_DROPOUT)
 		# NN text branch
 		if self.USE_ATT_FOR_QUERY is False:
-			self.queries_rnn = nn.LSTM(self.WORD_EMB_DIM, self.EMB_DIM, num_layers=1, bidirectional=False, batch_first=False)
+			self.queries_rnn = nn.LSTM(self.WORD_EMB_DIM, self.EMB_DIM, num_layers=self.LSTM_NUM_LAYERS, bidirectional=self.USE_BIDIRECTIONAL_LSTM, batch_first=False)
 		else:
 			self.queries_mlp = MLP(self.WORD_EMB_DIM, self.EMB_DIM, [self.EMB_DIM], F.leaky_relu, dropout=self.QUERY_NET_DROPOUT)
 			self.queries_softmax = nn.Softmax(dim = -1)

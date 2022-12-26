@@ -87,6 +87,8 @@ def parse_args():
 	parser.add_argument('--image_net_dropout', type=float, default=0.0)
 	parser.add_argument('--query_net_dropout', type=float, default=0.0)
 	parser.add_argument('--file', type = str)
+	parser.add_argument('--lstm_num_layers', type=int, default=1)
+	parser.add_argument('--use_bidirectional_lstm', action="store_true", default=False)
 
 	# debug mode
 	parser.add_argument('--debug', action = 'store_true')
@@ -126,6 +128,7 @@ if __name__ == '__main__':
 	if args.test_set:
 		if args.file:
 			init_net(model, args.file)
+			model.to(device=args.device)
 		score = evaluate(test_loader, model, loss, device_str=args.device)
 		print("untrained eval score:", score)
 	else:
