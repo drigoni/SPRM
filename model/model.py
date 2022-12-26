@@ -27,6 +27,7 @@ class ConceptNet(nn.Module):
 		self.QUERY_NET_DROPOUT = args.query_net_dropout
 		self.USE_BIDIRECTIONAL_LSTM = args.use_bidirectional_lstm
 		self.LSTM_NUM_LAYERS = args.lstm_num_layers
+		self.USE_HEAD_FOR_CONCEPT_EMBEDDING = args.use_head_for_concept_embedding
 
 		# other NN
 		self.wordemb = wordvec
@@ -94,7 +95,19 @@ class ConceptNet(nn.Module):
 
 		# get similarity scores
 		# NOTE: everything from here is masked with -1e8 and not 0.
-		concepts_similarity = self._get_concept_similarity(q_emb_freezed, k_emb_freezed, num_words, mask)
+		if self.USE_HEAD_FOR_CONCEPT_EMBEDDING:
+			new_q_emb = head_emb_freezed
+			new_bool_words = bool_heads
+			new_bool_queries = torch.any(new_bool_words, dim=-1).type(torch.long)			# [B, query]
+			new_num_words = torch.sum(new_bool_words, dim=-1)
+
+			new_mask_bool_queries_ext =  new_bool_queries.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, batch_size, n_proposals)
+			new_mask = (new_mask_bool_queries_ext * mask_bool_proposals_ext) == 0	# [b, n_queries, b, n_proposal]
+
+			concepts_similarity = self._get_concept_similarity(new_q_emb, k_emb_freezed, new_num_words, new_mask)
+		else:
+			concepts_similarity = self._get_concept_similarity(q_emb_freezed, k_emb_freezed, num_words, mask)
+
 		prediction_scores = self._get_predictions(q_feat, v_feat, concepts_similarity, mask, self.PREDICTION_WEIGHT)
 
 		# get query similarity

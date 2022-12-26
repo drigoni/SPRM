@@ -90,6 +90,7 @@ def parse_args():
 	parser.add_argument('--lstm_num_layers', type=int, default=1)
 	parser.add_argument('--use_bidirectional_lstm', action="store_true", default=False)
 	parser.add_argument('--do_checkpoint', action="store_true", default=False)
+	parser.add_argument('--use_head_for_concept_embedding', action="store_true", default=False)
 
 	# debug mode
 	parser.add_argument('--debug', action = 'store_true')

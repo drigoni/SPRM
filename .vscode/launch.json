@@ -9,7 +9,7 @@
       "type": "python",
       "request": "launch",
       "program": "main.py",
-      "args": ["--word_emb_dim=50", "--emb_dim=50", "--batch=4", "--loss_strategy=ce", "--dry_run", "--device=cpu", "--dataset=referit", "--use_bidirectional_lstm", "--lstm_num_layers=2"],
+      "args": ["--word_emb_dim=50", "--emb_dim=50", "--batch=4", "--loss_strategy=ce", "--dry_run", "--device=cpu", "--dataset=referit", "--lstm_num_layers=2", "--use_head_for_concept_embedding", "--do_head"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "env": {
