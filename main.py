@@ -89,6 +89,7 @@ def parse_args():
 	parser.add_argument('--file', type = str)
 	parser.add_argument('--lstm_num_layers', type=int, default=1)
 	parser.add_argument('--use_bidirectional_lstm', action="store_true", default=False)
+	parser.add_argument('--do_checkpoint', action="store_true", default=False)
 
 	# debug mode
 	parser.add_argument('--debug', action = 'store_true')
@@ -132,6 +133,6 @@ if __name__ == '__main__':
 		score = evaluate(test_loader, model, loss, device_str=args.device)
 		print("untrained eval score:", score)
 	else:
-		best_model = train(model, loss, train_loader, test_loader, args, lr = args.lr, epochs = args.epochs, device_str=args.device, save_checkpoint=save_checkpoint)
+		best_model = train(model, loss, train_loader, test_loader, args, lr = args.lr, epochs = args.epochs, device_str=args.device, save_checkpoint=save_checkpoint if do_checkpoint else None)
 		torch.save(best_model.cpu().state_dict(), save_path)
 		print("save model to", save_path)
