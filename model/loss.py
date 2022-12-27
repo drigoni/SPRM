@@ -57,6 +57,8 @@ class WeakVtgLoss(nn.Module):
         query_weight = -1 * query_similarity 
         query_weight = (query_similarity + 1) / 2
 
+        device = torch.device("cuda:0" if query_weight.is_cuda else "cpu")
+
         batch_size = predictions.shape[0]
 
         if self.loss_strategy == 'luca':
@@ -82,7 +84,7 @@ class WeakVtgLoss(nn.Module):
         elif self.loss_strategy == 'ce':
             loss = self.CE_loss_weight(predictions, target)  # [b]
             
-            neg_weight = query_weight + torch.eye(batch_size)  # [b, b]
+            neg_weight = query_weight + torch.eye(batch_size, device=device)  # [b, b]
             neg_weight = torch.sum(neg_weight, dim=-1)  # [b]
             
             loss = torch.sum(loss * neg_weight) / torch.sum(neg_weight)
