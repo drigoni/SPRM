@@ -28,6 +28,7 @@ class ConceptNet(nn.Module):
 		self.USE_BIDIRECTIONAL_LSTM = args.use_bidirectional_lstm
 		self.LSTM_NUM_LAYERS = args.lstm_num_layers
 		self.USE_HEAD_FOR_CONCEPT_EMBEDDING = args.use_head_for_concept_embedding
+		self.USE_MINILM_FOR_QUERY_EMBEDDING = args.use_minilm_for_query_embedding
 
 		# other NN
 		self.wordemb = wordvec
@@ -49,9 +50,12 @@ class ConceptNet(nn.Module):
 			self.similarity_function = nn.PairwiseDistance()
 		else:
 			self.similarity_function = nn.CosineSimilarity(dim=-1)
+
+		from transformers import AutoModel
+		self.minilm = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 		
 
-	def forward(self, query, head, label, proposals_features, attrs, bboxes):
+	def forward(self, query, head, label, proposals_features, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask):
 		"""
 		NOTE: PAD is always 0 and UNK is always 1 by construction.
 		:param idx:
@@ -114,6 +118,34 @@ class ConceptNet(nn.Module):
 		if self.USE_HEAD_FOR_QUERY_EMBEDDING:
 			new_q_emb = head_emb_freezed
 			new_bool_words = bool_heads
+		elif self.USE_MINILM_FOR_QUERY_EMBEDDING:
+			def mean_pooling(model_output, attention_mask):
+					# take attention mask into account for correct averaging
+					token_embeddings = model_output[
+							0
+					]  # first element of model_output contains all token embeddings
+					input_mask_expanded = (
+							attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+					)
+					return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(
+							input_mask_expanded.sum(1), min=1e-9
+					)
+
+			n_words = bert_query_input_ids.shape[2]
+
+			input_ids = bert_query_input_ids.reshape(batch_size * n_queries, n_words)
+			attention_mask = bert_query_attention_mask.reshape(batch_size * n_queries, n_words)
+
+			with torch.no_grad():
+				model_output = self.minilm(input_ids, attention_mask=attention_mask)
+
+			sentence_embeddings = mean_pooling(
+				model_output, attention_mask
+			)
+			sentence_embeddings = F.normalize(sentence_embeddings, p=2, dim=1)
+
+			new_q_emb = sentence_embeddings.reshape(batch_size, n_queries, n_words, -1)
+			new_bool_words = bert_query_attention_mask
 		else:
 			new_q_emb = q_emb_freezed
 			new_bool_words = bool_words
@@ -131,8 +163,8 @@ class ConceptNet(nn.Module):
 
 		return prediction_scores, prediction_loss, target, query_similarity
 	
-	def predict(self, query, head, label, feature, attrs, bboxes):
-		prediction_scores, prediction_loss, target, query_similarity = self.forward(query, head, label, feature, attrs, bboxes)
+	def predict(self, query, head, label, feature, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask):
+		prediction_scores, prediction_loss, target, query_similarity = self.forward(query, head, label, feature, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask)
 		batch_size = prediction_scores.shape[0]
 		n_query = prediction_scores.shape[1]
 		n_proposal = prediction_scores.shape[3]

@@ -30,17 +30,17 @@ def get_datasets(args):
 		test_split = "val"
 
 	if args.dataset == "flickr30k":
-		test_dset = Flickr30Dataset(wordEmbedding, test_split, train_fract=args.train_fract, do_spellchecker=args.do_spellchecker, do_oov=args.do_oov, do_head=args.do_head)
+		test_dset = Flickr30Dataset(wordEmbedding, test_split, train_fract=args.train_fract, do_spellchecker=args.do_spellchecker, do_oov=args.do_oov, do_head=args.do_head, do_bert=args.do_bert)
 		if args.dry_run:
 			train_dset = test_dset
 		else:
-			train_dset = Flickr30Dataset(wordEmbedding, "train", train_fract=args.train_fract, do_spellchecker=args.do_spellchecker, do_oov=args.do_oov, do_head=args.do_head)
+			train_dset = Flickr30Dataset(wordEmbedding, "train", train_fract=args.train_fract, do_spellchecker=args.do_spellchecker, do_oov=args.do_oov, do_head=args.do_head, do_bert=args.do_bert)
 	else:
-		test_dset = ReferitDataset(wordEmbedding, test_split, train_fract=args.train_fract, do_spellchecker=args.do_spellchecker, do_oov=args.do_oov, do_head=args.do_head)
+		test_dset = ReferitDataset(wordEmbedding, test_split, train_fract=args.train_fract, do_spellchecker=args.do_spellchecker, do_oov=args.do_oov, do_head=args.do_head, do_bert=args.do_bert)
 		if args.dry_run:
 			train_dset = test_dset
 		else:
-			train_dset = ReferitDataset(wordEmbedding, "train", train_fract=args.train_fract, do_spellchecker=args.do_spellchecker, do_oov=args.do_oov, do_head=args.do_head)
+			train_dset = ReferitDataset(wordEmbedding, "train", train_fract=args.train_fract, do_spellchecker=args.do_spellchecker, do_oov=args.do_oov, do_head=args.do_head, do_bert=args.do_bert)
 	return train_dset, test_dset
 
 
@@ -91,6 +91,8 @@ def parse_args():
 	parser.add_argument('--use_bidirectional_lstm', action="store_true", default=False)
 	parser.add_argument('--do_checkpoint', action="store_true", default=False)
 	parser.add_argument('--use_head_for_concept_embedding', action="store_true", default=False)
+	parser.add_argument('--do_bert', action="store_true", default=False)
+	parser.add_argument('--use_minilm_for_query_embedding', action="store_true", default=False)
 
 	# debug mode
 	parser.add_argument('--debug', action = 'store_true')
