@@ -54,32 +54,36 @@ class WeakVtgLoss(nn.Module):
         return loss
 
     def _forward_negative_weighting(self, predictions, target, query_similarity):
+        query_weight = -1 * query_similarity 
+        query_weight = (query_similarity + 1) / 2
+
         batch_size = predictions.shape[0]
 
         if self.loss_strategy == 'luca':
-            predictions_weighted = predictions * query_similarity
+            predictions_weighted = predictions * query_weight
 
             pos_index = target.unsqueeze(-1)     # [b, 1]
             pos_pred = torch.gather(predictions, 1, pos_index).squeeze(-1)  # [b]
 
             neg_index = (target + 1) % batch_size  # [b]
             neg_index = neg_index.unsqueeze(-1)     # [b, 1]
-            neg_weight = torch.gather(query_similarity, 1, neg_index).squeeze(-1)  # [b]
+            neg_weight = torch.gather(query_weight, 1, neg_index).squeeze(-1)  # [b]
             neg_pred = torch.gather(predictions_weighted, 1, neg_index).squeeze(-1)  # [b]
 
-            neg = torch.sum(neg_pred) / torch.sum(neg_weight)  # weighted mean
+            neg = torch.sum(neg_pred) / (torch.sum(neg_weight) + 1e-08)  # weighted mean
             
             loss = - torch.mean(pos_pred) + neg
         elif self.loss_strategy == 'all':
-            predictions_weighted = predictions * query_similarity
+            predictions_weighted = predictions * query_weight
             pos_index = target.unsqueeze(-1)     # [b, 1]
             pos_pred = torch.gather(predictions, 1, pos_index).squeeze(-1)  # [b]
-            neg_pred = (torch.sum(predictions_weighted, dim=-1) - pos_pred) / (torch.sum(query_similarity, dim=-1) - 1)   # [b]
+            neg_pred = torch.sum(predictions_weighted, dim=-1) / torch.sum(query_weight, dim=-1)  # [b]
             loss = - torch.mean(pos_pred)  + torch.mean(neg_pred)
         elif self.loss_strategy == 'ce':
             loss = self.CE_loss_weight(predictions, target)  # [b]
             
-            neg_weight = torch.sum(query_similarity, dim=-1) - 1   # [b]
+            neg_weight = query_weight + torch.eye(batch_size)  # [b, b]
+            neg_weight = torch.sum(neg_weight, dim=-1)  # [b]
             
             loss = torch.sum(loss * neg_weight) / torch.sum(neg_weight)
         else:
