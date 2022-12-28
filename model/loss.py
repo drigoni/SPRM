@@ -55,7 +55,7 @@ class WeakVtgLoss(nn.Module):
 
     def _forward_negative_weighting(self, predictions, target, query_similarity):
         query_weight = -1 * query_similarity 
-        query_weight = (query_similarity + 1) / 2
+        query_weight = (query_weight + 1) / 2
 
         device = torch.device("cuda:0" if query_weight.is_cuda else "cpu")
 
