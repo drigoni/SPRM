@@ -119,18 +119,6 @@ class ConceptNet(nn.Module):
 			new_q_emb = head_emb_freezed
 			new_bool_words = bool_heads
 		elif self.USE_MINILM_FOR_QUERY_EMBEDDING:
-			def mean_pooling(model_output, attention_mask):
-					# take attention mask into account for correct averaging
-					token_embeddings = model_output[
-							0
-					]  # first element of model_output contains all token embeddings
-					input_mask_expanded = (
-							attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
-					)
-					return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(
-							input_mask_expanded.sum(1), min=1e-9
-					)
-
 			n_words = bert_query_input_ids.shape[2]
 
 			input_ids = bert_query_input_ids.reshape(batch_size * n_queries, n_words)
@@ -139,10 +127,8 @@ class ConceptNet(nn.Module):
 			with torch.no_grad():
 				model_output = self.minilm(input_ids, attention_mask=attention_mask)
 
-			sentence_embeddings = mean_pooling(
-				model_output, attention_mask
-			)
-			sentence_embeddings = F.normalize(sentence_embeddings, p=2, dim=1)
+			sentence_embeddings = model_output[0]
+			sentence_embeddings = sentence_embeddings * attention_mask.unsqueeze(-1)
 
 			new_q_emb = sentence_embeddings.reshape(batch_size, n_queries, n_words, -1)
 			new_bool_words = bert_query_attention_mask
