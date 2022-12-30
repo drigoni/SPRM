@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 class WeakVtgLoss(nn.Module):
@@ -9,9 +8,8 @@ class WeakVtgLoss(nn.Module):
         """
 		:param args: args from command line
 		"""
-        # params
-        self.CE_loss_base = nn.CrossEntropyLoss(reduction = "mean")
-        self.CE_loss_weight = nn.CrossEntropyLoss(reduction = "none")
+        self.ce_loss = nn.CrossEntropyLoss(reduction="none")
+
         self.loss_strategy = args.loss_strategy
         self.do_negative_weighting = args.do_negative_weighting
         self.loss_sigmoid_slope = args.loss_sigmoid_slope
@@ -20,76 +18,104 @@ class WeakVtgLoss(nn.Module):
         """
         :param predictions: [b, b]
         :param target: [b]
+        :param query_similarity: [b, b]
         """
-        if self.do_negative_weighting:
-            loss = self._forward_negative_weighting(predictions, target, query_similarity)
-        else:
-            loss = self._forward_base(predictions, target, query_similarity)
-        
-        return loss
-
-    def _forward_base(self, predictions, target, query_similarity):
-        """
-        :param predictions: [b, b]
-        :param target: [b]
-        """
-        batch_size = predictions.shape[0]
-
-        if self.loss_strategy == 'luca':
-            pos_index = target.unsqueeze(-1)        # [b, 1]
-            neg_index = (target + 1) % batch_size   # [b]
-            neg_index = neg_index.unsqueeze(-1)     # [b, 1]
-            pos_pred = torch.gather(predictions, 1, pos_index).squeeze(-1)
-            neg_pred = torch.gather(predictions, 1, neg_index).squeeze(-1)
-            loss = - torch.mean(pos_pred) + torch.mean(neg_pred)
-        elif self.loss_strategy == 'all':
-            pos_index = target.unsqueeze(-1)     # [b, 1]
-            pos_pred = torch.gather(predictions, 1, pos_index).squeeze(-1)           # [b]
-            neg_pred = (torch.sum(predictions, dim=-1) - pos_pred) / (batch_size - 1)   # [b]
-            loss = - torch.mean(pos_pred)  + torch.mean(neg_pred)
-        elif self.loss_strategy == 'ce':
-            loss = self.CE_loss_base(predictions, target)
-        else:
-            print("Error, loss_strategy '{}' not defined. ".format(self.loss_strategy))
-            exit(1)
-        return loss
-
-    def _forward_negative_weighting(self, predictions, target, query_similarity):
-        query_weight = -1 * query_similarity 
+        query_weight = -1 * query_similarity
         query_weight = torch.sigmoid(query_weight * self.loss_sigmoid_slope)
 
-        device = torch.device("cuda:0" if query_weight.is_cuda else "cpu")
+        prediction_query_weight = query_weight if self.do_negative_weighting else None
 
-        batch_size = predictions.shape[0]
-
-        if self.loss_strategy == 'luca':
-            predictions_weighted = predictions * query_weight
-
-            pos_index = target.unsqueeze(-1)     # [b, 1]
-            pos_pred = torch.gather(predictions, 1, pos_index).squeeze(-1)  # [b]
-
-            neg_index = (target + 1) % batch_size  # [b]
-            neg_index = neg_index.unsqueeze(-1)     # [b, 1]
-            neg_weight = torch.gather(query_weight, 1, neg_index).squeeze(-1)  # [b]
-            neg_pred = torch.gather(predictions_weighted, 1, neg_index).squeeze(-1)  # [b]
-
-            neg = torch.sum(neg_pred) / (torch.sum(neg_weight) + 1e-08)  # weighted mean
-            
-            loss = - torch.mean(pos_pred) + neg
-        elif self.loss_strategy == 'all':
-            predictions_weighted = predictions * query_weight
-            pos_index = target.unsqueeze(-1)     # [b, 1]
-            pos_pred = torch.gather(predictions, 1, pos_index).squeeze(-1)  # [b]
-            neg_pred = torch.sum(predictions_weighted, dim=-1) / torch.sum(query_weight, dim=-1)  # [b]
-            loss = - torch.mean(pos_pred)  + torch.mean(neg_pred)
-        elif self.loss_strategy == 'ce':
-            loss = self.CE_loss_weight(predictions, target)  # [b]
-            
-            neg_weight = query_weight + torch.eye(batch_size, device=device)  # [b, b]
-            neg_weight = torch.sum(neg_weight, dim=-1)  # [b]
-            
-            loss = torch.sum(loss * neg_weight) / torch.sum(neg_weight)
+        if self.loss_strategy == "luca":
+            loss = forward_luca(
+                predictions, target, query_weight=prediction_query_weight
+            )
+        elif self.loss_strategy == "all":
+            loss = forward_all(
+                predictions, target, query_weight=prediction_query_weight
+            )
+        elif self.loss_strategy == "ce":
+            loss = forward_ce(
+                predictions,
+                target,
+                query_weight=prediction_query_weight,
+                cross_entropy_loss=self.ce_loss,
+            )
         else:
-            print("Error, loss_strategy '{}' not defined. ".format(self.loss_strategy))
-            exit(1)
+            raise ValueError(f"Invalid loss strategy '{self.loss_strategy}'.")
+
         return loss
+
+
+def forward_luca(predictions, target, query_weight=None):
+    """
+    :param predictions: [b, b]
+    :param target: [b]
+    :param query_weight: [b, b]
+    """
+    if query_weight is None:
+        query_weight = torch.ones_like(predictions)
+
+    batch_size = predictions.shape[0]
+
+    predictions_weighted = predictions * query_weight
+
+    pos_index = target.unsqueeze(-1)  # [b, 1]
+    pos_pred = torch.gather(predictions, 1, pos_index).squeeze(-1)  # [b]
+
+    neg_index = (target + 1) % batch_size  # [b]
+    neg_index = neg_index.unsqueeze(-1)  # [b, 1]
+    neg_weight = torch.gather(query_weight, 1, neg_index).squeeze(-1)  # [b]
+    neg_pred = torch.gather(predictions_weighted, 1, neg_index).squeeze(-1)  # [b]
+
+    neg = torch.sum(neg_pred) / (torch.sum(neg_weight) + 1e-08)  # weighted mean
+
+    loss = -torch.mean(pos_pred) + neg
+
+    return loss
+
+
+def forward_all(predictions, target, query_weight=None):
+    """
+    :param predictions: [b, b]
+    :param target: [b]
+    :param query_weight: query weight used to multiply predictions [b, b]
+    :param query_similarity: query similarity eventually used to retrieve negative examples [b, b]
+    """
+    if query_weight is None:
+        query_weight = torch.ones_like(predictions)
+
+    batch_size = predictions.shape[0]
+
+    # given prediction a tensor of [b, b], for each example (row) in batch we
+    # gather negative examples as all the other example in row except the positive
+    # one, i.e. the one in the diagonal
+
+    neg_query_weight_mask = 1 - torch.eye(batch_size)  # [b, b]
+    neg_query_weight = query_weight * neg_query_weight_mask  # [b, b]
+
+    neg_pred_weighted = predictions * neg_query_weight
+
+    pos_index = target.unsqueeze(-1)  # [b, 1]
+    pos_pred = torch.gather(predictions, 1, pos_index).squeeze(-1)  # [b]
+    neg_pred = (torch.sum(neg_pred_weighted, dim=-1)) / torch.sum(
+        neg_query_weight, dim=-1
+    )  # [b]
+    loss = -torch.mean(pos_pred) + torch.mean(neg_pred)
+    return loss
+
+
+def forward_ce(predictions, target, query_weight, cross_entropy_loss, *_, **__):
+    if query_weight is None:
+        query_weight = torch.ones_like(predictions)
+
+    device = predictions.device
+    batch_size = predictions.shape[0]
+
+    loss = cross_entropy_loss(predictions, target)  # [b]
+
+    neg_weight = query_weight + torch.eye(batch_size, device=device)  # [b, b]
+    neg_weight = torch.sum(neg_weight, dim=-1)  # [b]
+
+    loss = torch.sum(loss * neg_weight) / torch.sum(neg_weight)
+
+    return loss
