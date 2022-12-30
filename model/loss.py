@@ -14,6 +14,7 @@ class WeakVtgLoss(nn.Module):
         self.CE_loss_weight = nn.CrossEntropyLoss(reduction = "none")
         self.loss_strategy = args.loss_strategy
         self.do_negative_weighting = args.do_negative_weighting
+        self.loss_sigmoid_slope = args.loss_sigmoid_slope
 
     def forward(self, predictions, target, query_similarity):
         """
@@ -55,7 +56,7 @@ class WeakVtgLoss(nn.Module):
 
     def _forward_negative_weighting(self, predictions, target, query_similarity):
         query_weight = -1 * query_similarity 
-        query_weight = (query_weight + 1) / 2
+        query_weight = torch.sigmoid(query_weight * self.loss_sigmoid_slope)
 
         device = torch.device("cuda:0" if query_weight.is_cuda else "cpu")
 

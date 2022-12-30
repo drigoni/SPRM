@@ -93,6 +93,7 @@ def parse_args():
 	parser.add_argument('--use_head_for_concept_embedding', action="store_true", default=False)
 	parser.add_argument('--do_bert', action="store_true", default=False)
 	parser.add_argument('--use_minilm_for_query_embedding', action="store_true", default=False)
+	parser.add_argument('--loss_sigmoid_slope', type=float, default=1.0)
 
 	# debug mode
 	parser.add_argument('--debug', action = 'store_true')
