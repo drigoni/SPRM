@@ -68,7 +68,7 @@ def parse_args():
 	parser.add_argument('--cosine_similarity_strategy', type= str, default='mean',
 						choices=['mean', 'max'])
 	parser.add_argument('--loss_strategy', type= str, default='luca',
-						choices=['luca', 'all', 'ce'])
+						choices=['luca', 'luca_min', 'luca_max', 'all', 'ce'])
 	parser.add_argument('--do_spellchecker', action="store_true", default=False)
 	parser.add_argument('--do_oov', action="store_true", default=False)
 	parser.add_argument('--do_negative_weighting', action="store_true", default=False)

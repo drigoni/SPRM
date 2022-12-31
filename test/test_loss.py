@@ -3,7 +3,7 @@ import unittest
 import torch
 import torch.nn as nn
 
-from model.loss import forward_all, forward_ce, forward_luca
+from model.loss import forward_all, forward_ce, forward_luca_random
 
 
 class LossTest(unittest.TestCase):
@@ -45,7 +45,7 @@ class LossTest(unittest.TestCase):
 
         loss_1 = get_loss_1(predictions, target)
         loss_2 = get_loss_2(predictions, target, query_weight)
-        loss_3 = forward_luca(predictions, target, query_weight)
+        loss_3 = forward_luca_random(predictions, target, query_weight)
 
         self.assertAlmostEqual(loss_1.item(), loss_2.item())
         self.assertAlmostEqual(loss_1.item(), loss_3.item())
