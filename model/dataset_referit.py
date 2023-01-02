@@ -105,8 +105,10 @@ class ReferitDataset(Dataset):
 		# should be already padded for `lens`
 		while(len(bert_query_input_ids) < Q):
 			bert_query_input_ids.append([0] * lens)
+		bert_query_input_ids = bert_query_input_ids[:Q]
 		while(len(bert_query_attention_mask) < Q):
 			bert_query_attention_mask.append([0] * lens)
+		bert_query_attention_mask = bert_query_attention_mask[:Q]
 
 		heads_idx = []
 		for h in heads:
@@ -143,6 +145,8 @@ class ReferitDataset(Dataset):
 		assert len(querys_idx) == Q
 		assert len(heads_idx) == Q
 		assert len(target_bboxes) == Q
+		assert len(bert_query_input_ids) == Q
+		assert len(bert_query_attention_mask) == Q
 
 		# torch.tensor(int(imgid))
 		# torch.tensor(labels_idx)
