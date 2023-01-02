@@ -136,8 +136,10 @@ def forward_luca(
     :param query_weight: [b, b]
     :param neg_index: [b, <=b]
     """
+    device = predictions.device
+
     if not do_negative_weighting:
-        query_weight = torch.ones_like(predictions)
+        query_weight = torch.ones_like(predictions, device=device)
 
     predictions_weighted = predictions * query_weight
 
@@ -167,8 +169,10 @@ def forward_all(predictions, target, query_weight, *, do_negative_weighting=Fals
     :param query_weight: query weight used to multiply predictions [b, b]
     :param query_similarity: query similarity eventually used to retrieve negative examples [b, b]
     """
+    device = predictions.device
+
     if not do_negative_weighting:
-        query_weight = torch.ones_like(predictions)
+        query_weight = torch.ones_like(predictions, device=device)
 
     batch_size = predictions.shape[0]
 
@@ -198,8 +202,10 @@ def forward_ce(
     cross_entropy_loss,
     do_negative_weighting=False,
 ):
+    device = predictions.device
+
     if not do_negative_weighting:
-        query_weight = torch.ones_like(predictions)
+        query_weight = torch.ones_like(predictions, device=device)
 
     device = predictions.device
     batch_size = predictions.shape[0]
