@@ -26,7 +26,7 @@ class WeakVtgLoss(nn.Module):
         do_neg = self.do_negative_weighting  # rename
 
         if self.loss_strategy == "luca":
-            loss = forward_luca(
+            loss = forward_luca_random(
                 predictions, target, query_weight, do_negative_weighting=do_neg
             )
         elif self.loss_strategy == "luca_min":
