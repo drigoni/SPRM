@@ -25,12 +25,12 @@ from model.dataset import load_boxes_classes, get_spacy_nlp
 
 
 class ReferitDataset(Dataset):
-	def __init__(self, wordEmbedding, name = 'train', dataroot = 'data/referit/',  train_fract=1.0, do_spellchecker=False, do_oov=False, do_head=False):
+	def __init__(self, wordEmbedding, name = 'train', dataroot = 'data/referit/',  train_fract=1.0, do_spellchecker=False, do_oov=False, do_head=False, do_bert=False):
 		super(ReferitDataset, self).__init__()
 		print("Loading Referit dataset. Split: ", name)
 		self.indexer = wordEmbedding.word_indexer
 		print("Loading entries...")
-		self.entries, self.img_id2idx = load_dataset(name, dataroot, train_fract=train_fract, do_spellchecker=do_spellchecker, do_head=do_head)
+		self.entries, self.img_id2idx = load_dataset(name, dataroot, train_fract=train_fract, do_spellchecker=do_spellchecker, do_head=do_head, do_bert=do_bert)
 		print("Loading classes...")
 		self.class_labels = load_boxes_classes('data/objects_vocab.txt', word_embedding=wordEmbedding, word_indexer=self.indexer, do_spellchecker=do_spellchecker, do_oov=do_oov)
 		# img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
@@ -47,7 +47,7 @@ class ReferitDataset(Dataset):
 		entry = self.entries[index]
 		attrs = []
 			# attrs = entry['attrs']
-		return entry['image'], entry['labels'], entry['query'], entry['head'], attrs, entry['detected_bboxes'], entry['target_bboxes']
+		return entry['image'], entry['labels'], entry['query'], entry['head'], attrs, entry['detected_bboxes'], entry['target_bboxes'], entry['bert_query_input_ids'], entry['bert_query_attention_mask']
 
 	def __getitem__(self, index):
 		'''
@@ -67,7 +67,7 @@ class ReferitDataset(Dataset):
 		lens = 12	# length of the query
 		B = 20		# max number of target boxes to consider for each query.
 
-		imgid, labels, querys, heads, attrs, bboxes, target_bboxes = self._get_entry(index)
+		imgid, labels, querys, heads, attrs, bboxes, target_bboxes, bert_query_input_ids, bert_query_attention_mask = self._get_entry(index)
 
 		idx = self.img_id2idx[int(imgid)]  # to retrieve pos in pos_box
 		pos = self.pos_boxes[idx]
@@ -100,6 +100,13 @@ class ReferitDataset(Dataset):
 		while(len(querys_idx) < Q):
 			querys_idx.append([0] * lens)
 		querys_idx = querys_idx[:Q]
+
+		# bert tokens
+		# should be already padded for `lens`
+		while(len(bert_query_input_ids) < Q):
+			bert_query_input_ids.append([0] * lens)
+		while(len(bert_query_attention_mask) < Q):
+			bert_query_attention_mask.append([0] * lens)
 
 		heads_idx = []
 		for h in heads:
@@ -148,13 +155,13 @@ class ReferitDataset(Dataset):
 
 		return torch.tensor(int(imgid)), torch.tensor(labels_idx), torch.tensor(attr_idx), feature, \
 			   torch.tensor(querys_idx), bboxes, torch.tensor(target_bboxes), torch.tensor(num_obj), torch.tensor(
-			num_query), torch.tensor(heads_idx)
+			num_query), torch.tensor(heads_idx), torch.tensor(bert_query_input_ids), torch.tensor(bert_query_attention_mask)
 
 	def __len__(self):
 		return len(self.entries)
 
 
-def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spellchecker=False, do_head=False):
+def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spellchecker=False, do_head=False, do_bert=False):
 	"""Load entries
 
 	img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
@@ -165,7 +172,13 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 		spell = SpellChecker()
 	if do_head:
 		spacy_nlp = get_spacy_nlp()
-
+	if do_bert:
+		from transformers import AutoTokenizer
+		
+		tokenizer = AutoTokenizer.from_pretrained(
+			"sentence-transformers/all-MiniLM-L6-v2",
+			padding=True, truncation=True,
+		)
 	entries = []
 
 
@@ -204,6 +217,19 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 					phrase_head = ' '.join(phrase_heads)   # we treat multiple heads as a phrase
 					head.append(phrase_head)
 
+			bert_query_input_ids = []
+			bert_query_attention_mask = []
+			if do_bert:
+				bert_tokenized = tokenizer(
+					query, 
+					padding="max_length",
+					truncation=True,
+					max_length=12,
+					return_tensors="np",
+				)
+				bert_query_input_ids = bert_tokenized["input_ids"].tolist()
+				bert_query_attention_mask = bert_tokenized["attention_mask"].tolist()
+
 			# NOTE: flickr30k, for each query, has associated multiple bounding target boxes 
 			entry = {
 				'image': image_id,
@@ -212,13 +238,15 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 				'labels': labels,
 				'attrs': attrs,
 				'query': query,	# list of queries
-				'head': head
+				'head': head,
+				'bert_query_input_ids': bert_query_input_ids,
+				'bert_query_attention_mask': bert_query_attention_mask,
 			}
 			entries.append(entry)
 	return entries
 
 
-def load_dataset(name = 'train', dataroot = 'data/referit/', train_fract=1.0, do_spellchecker=False, do_head=False):
+def load_dataset(name = 'train', dataroot = 'data/referit/', train_fract=1.0, do_spellchecker=False, do_head=False, do_bert=False):
 	obj_detection_dict = json.load(open("data/referit/%s_detection_dict.json" % name, "r"))
 	img_id2idx = cPickle.load(open(os.path.join(dataroot, '%s_imgid2idx.pkl' % name), 'rb'))
 	ref_ann, ref_inst_ann, annotations = load_referit_annotations(dataroot + "refer/data/")
@@ -259,7 +287,7 @@ def load_dataset(name = 'train', dataroot = 'data/referit/', train_fract=1.0, do
 		subset_idx = random.sample([i for i in img_id2idx.keys()], int(n_subset))
 		img_id2idx = {key: img_id2idx[key] for key in subset_idx}
 
-	entries = load_train_referit(dataroot, img_id2idx, obj_detection_dict, annotations_dict, do_spellchecker=do_spellchecker, do_head=do_head)
+	entries = load_train_referit(dataroot, img_id2idx, obj_detection_dict, annotations_dict, do_spellchecker=do_spellchecker, do_head=do_head, do_bert=do_bert)
 	return entries, img_id2idx
 
 
