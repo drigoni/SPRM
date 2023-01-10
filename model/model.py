@@ -55,7 +55,7 @@ class ConceptNet(nn.Module):
 		self.minilm = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 		
 
-	def forward(self, query, head, label, proposals_features, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask):
+	def forward(self, query, head, label, proposals_features, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask, locations, relations):
 		"""
 		NOTE: PAD is always 0 and UNK is always 1 by construction.
 		:param idx:
@@ -108,9 +108,9 @@ class ConceptNet(nn.Module):
 			new_mask_bool_queries_ext =  new_bool_queries.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, batch_size, n_proposals)
 			new_mask = (new_mask_bool_queries_ext * mask_bool_proposals_ext) == 0	# [b, n_queries, b, n_proposal]
 
-			concepts_similarity = self._get_concept_similarity(new_q_emb, k_emb_freezed, new_num_words, new_mask)
+			concepts_similarity = self._get_concept_similarity(new_q_emb, k_emb_freezed, new_num_words, new_mask, locations, relations)
 		else:
-			concepts_similarity = self._get_concept_similarity(q_emb_freezed, k_emb_freezed, num_words, mask)
+			concepts_similarity = self._get_concept_similarity(q_emb_freezed, k_emb_freezed, num_words, mask, locations, relations)
 
 		prediction_scores = self._get_predictions(q_feat, v_feat, concepts_similarity, mask, self.PREDICTION_WEIGHT)
 
@@ -149,8 +149,8 @@ class ConceptNet(nn.Module):
 
 		return prediction_scores, prediction_loss, target, query_similarity
 	
-	def predict(self, query, head, label, feature, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask):
-		prediction_scores, prediction_loss, target, query_similarity = self.forward(query, head, label, feature, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask)
+	def predict(self, query, head, label, feature, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask, locations, relations):
+		prediction_scores, prediction_loss, target, query_similarity = self.forward(query, head, label, feature, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask, locations, relations)
 		batch_size = prediction_scores.shape[0]
 		n_query = prediction_scores.shape[1]
 		n_proposal = prediction_scores.shape[3]
@@ -234,7 +234,7 @@ class ConceptNet(nn.Module):
 
 		return predictions
 
-	def _get_concept_similarity(self, q_emb, k_emb, num_words, mask):
+	def _get_concept_similarity(self, q_emb, k_emb, num_words, mask, locations, relations):
 		"""
 		:param q_emb: embedding of the queries words heads [b, query, words, dim]. pad with 0
 		:param k_emb: embedding of the bounding boxes classes [b, proposal, dim]. pad with 0
@@ -256,6 +256,39 @@ class ConceptNet(nn.Module):
 				scores = self.similarity_function(q_emb_ext, k_emb_ext)		# [b, query, b, proposal]
 				# mask
 				scores = scores.masked_fill(mask, -1e8)
+
+				# locations [b, query, 4]
+				# relations [b, proposal, 4]
+
+				locations_ext = locations.unsqueeze(2).unsqueeze(2)                     # [b, query, 1, 1, 4]
+				locations_ext = locations_ext.repeat(1, 1, batch_size, n_proposals, 1)  # [b, query, b, proposal, 4]
+
+				relations_ext = relations.unsqueeze(0).unsqueeze(0)                   # [1, 1, b, proposal, 4]
+				relations_ext = relations_ext.repeat(batch_size, n_queries, 1, 1, 1)  # [b, query, b, proposal, 4]
+
+				query_has_location = torch.any(locations_ext, dim=-1, keepdim=True).long()  # [b, query, b, proposal, 1]
+
+				proposal_has_relation = torch.any(relations_ext, dim=-1, keepdim=True)  # [b, query, b, proposal]
+				query_has_relation = torch.any(proposal_has_relation, dim=-2, keepdim=True).long()  # [b, query, b, proposal]
+
+				# consider queries without locations
+				locations_ext = locations_ext + (1 - query_has_location)           # [b, query, 4]
+
+				# consider bounding box without relations when queries has no locations
+				relations_ext = relations_ext + (1 - query_has_location)  # consider bbox whether query has no locations
+				relations_ext = relations_ext + (1 - query_has_relation)  # put back all bboxes when no one has relations
+				relations_ext = relations_ext > 0  # [b, query, b, proposal, 4]
+				relations_ext = relations_ext.long()
+
+				scores2 = locations_ext * relations_ext
+				scores2 = torch.sum(scores2, dim=-1)  # [b, query, b, proposal]
+				scores2 = scores2 >= 2                # [b, query, b, proposal]
+				scores2 = scores2.float()             # [b, query, b, proposal]
+
+				scores = scores * scores2 - (1 - scores2)
+
+				scores = scores.masked_fill(mask, -1e8)
+
 			elif self.COSINE_SIMILARITY_STRATEGY == 'max':
 				# select the score considering only the most similar words in a query with the labels
 				q_emb_ext = q_emb.unsqueeze(3).unsqueeze(3)	# [b, query, 1, 1, dim]
