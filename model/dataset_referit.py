@@ -238,7 +238,7 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 					head.append(phrase_head)
 			
 
-			do_relations = True  # TODO: remove
+			do_relations = False  # TODO: remove
 			relations = [[0 for i in range(4)] for j in range(len(bboxes))]  # [B, 4]
 			if do_relations:
 				
@@ -266,8 +266,8 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 						# then their relations will be [1, 1, 1, 1] by construction
 
 
-			do_locations = True  # TODO: remove
-			locations = []
+			do_locations = False  # TODO: remove
+			locations = [[0 for i in range(4)] for j in range(len(query))]
 			if do_locations:
 				# locations [left, right, top, bottom]
 				for noun_phrase in query:

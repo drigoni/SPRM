@@ -2,7 +2,7 @@ import wandb
 
 api = wandb.Api()
 
-runs = api.runs("weakly_guys/weakvg", {'created_at': {"$gt": '2023-01-08T##'}})
+runs = api.runs("weakly_guys/weakvg", {'created_at': {"$gt": '2023-01-09T##'}})
 
 for run in runs:
   history = run.history(pandas=False)
