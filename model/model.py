@@ -29,12 +29,16 @@ class ConceptNet(nn.Module):
 		self.LSTM_NUM_LAYERS = args.lstm_num_layers
 		self.USE_HEAD_FOR_CONCEPT_EMBEDDING = args.use_head_for_concept_embedding
 		self.USE_MINILM_FOR_QUERY_EMBEDDING = args.use_minilm_for_query_embedding
+		self.USE_WV_FREEZED = args.use_wv_freezed
 
 		# other NN
 		self.wordemb = wordvec
 		self.indexer = wordvec.word_indexer
 		self.wv = nn.Embedding.from_pretrained(torch.from_numpy(wordvec.vectors), freeze = False)
 		self.wv_freezed = nn.Embedding.from_pretrained(torch.from_numpy(wordvec.vectors), freeze = True)
+
+		if self.USE_WV_FREEZED:
+			self.wv = self.wv_freezed
 
 		# NN image branch
 		self.linear_img = nn.Linear(20, 20)
