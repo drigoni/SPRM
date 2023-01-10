@@ -47,7 +47,9 @@ class ReferitDataset(Dataset):
 		entry = self.entries[index]
 		attrs = []
 			# attrs = entry['attrs']
-		return entry['image'], entry['labels'], entry['query'], entry['head'], attrs, entry['detected_bboxes'], entry['target_bboxes'], entry['bert_query_input_ids'], entry['bert_query_attention_mask']
+		return entry['image'], entry['labels'], entry['query'], entry['head'], attrs, \
+			entry['detected_bboxes'], entry['target_bboxes'], entry['bert_query_input_ids'], \
+			entry['bert_query_attention_mask'], entry['locations'], entry['relations']
 
 	def __getitem__(self, index):
 		'''
@@ -67,7 +69,8 @@ class ReferitDataset(Dataset):
 		lens = 12	# length of the query
 		B = 20		# max number of target boxes to consider for each query.
 
-		imgid, labels, querys, heads, attrs, bboxes, target_bboxes, bert_query_input_ids, bert_query_attention_mask = self._get_entry(index)
+		imgid, labels, querys, heads, attrs, bboxes, target_bboxes, bert_query_input_ids, \
+			bert_query_attention_mask, locations, relations = self._get_entry(index)
 
 		idx = self.img_id2idx[int(imgid)]  # to retrieve pos in pos_box
 		pos = self.pos_boxes[idx]
@@ -121,6 +124,11 @@ class ReferitDataset(Dataset):
 			heads_idx.append([0] * lens)
 		heads_idx = heads_idx[:Q]
 
+		pad_location = [0, 0, 0, 0]
+		while (len(locations) < Q):
+			locations.append(pad_location)
+		locations = locations[:Q]
+
 		padbox = [0, 0, 0, 0]
 
 		while (len(bboxes) < K):
@@ -140,6 +148,11 @@ class ReferitDataset(Dataset):
 			target_bboxes.append(padline)
 		target_bboxes = target_bboxes[:Q]
 
+		pad_relation = [0, 0, 0, 0]
+		while (len(relations) < K):
+			relations.append(pad_relation)
+		relations = relations[:K]
+
 		assert len(labels_idx) == K
 		assert len(bboxes) == K
 		assert len(querys_idx) == Q
@@ -147,6 +160,8 @@ class ReferitDataset(Dataset):
 		assert len(target_bboxes) == Q
 		assert len(bert_query_input_ids) == Q
 		assert len(bert_query_attention_mask) == Q
+		assert len(relations) == K
+		assert len(locations) == Q
 
 		# torch.tensor(int(imgid))
 		# torch.tensor(labels_idx)
@@ -158,8 +173,9 @@ class ReferitDataset(Dataset):
 		# torch.tensor(heads_idx)
 
 		return torch.tensor(int(imgid)), torch.tensor(labels_idx), torch.tensor(attr_idx), feature, \
-			   torch.tensor(querys_idx), bboxes, torch.tensor(target_bboxes), torch.tensor(num_obj), torch.tensor(
-			num_query), torch.tensor(heads_idx), torch.tensor(bert_query_input_ids), torch.tensor(bert_query_attention_mask)
+			torch.tensor(querys_idx), bboxes, torch.tensor(target_bboxes), torch.tensor(num_obj), \
+			torch.tensor(num_query), torch.tensor(heads_idx), torch.tensor(bert_query_input_ids), \
+			torch.tensor(bert_query_attention_mask), torch.tensor(locations), torch.tensor(relations)
 
 	def __len__(self):
 		return len(self.entries)
@@ -186,7 +202,7 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 	entries = []
 
 
-	for image_id, idx in tqdm(img_id2idx.items()):
+	for image_id, rev_index in tqdm(img_id2idx.items()):
 		image_id = str(image_id)
 		bboxes = obj_detection[image_id]['bboxes']
 		labels = obj_detection[image_id]['classes']  # [B, 4]
@@ -220,6 +236,48 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 						phrase_heads = [doc[-1].text]  # fallback to last word
 					phrase_head = ' '.join(phrase_heads)   # we treat multiple heads as a phrase
 					head.append(phrase_head)
+			
+
+			do_relations = True  # TODO: remove
+			relations = [[0 for i in range(4)] for j in range(len(bboxes))]  # [B, 4]
+			if do_relations:
+				
+				make_center = lambda x: ((x[0] + x[2]) / 2, (x[1] + x[3]) / 2)
+
+				indexes = [i for i in range(len(bboxes))]
+				centers = [make_center(box) for box in bboxes]
+
+				for label in set(labels):
+					indexes_by_label = [i for i in indexes if labels[i] == label]
+					centers_by_label = [centers[i] for i in indexes_by_label]
+
+					for box_index in indexes_by_label:
+						leftmost = min(centers_by_label, key=lambda x: x[0])[0]    # x
+						rightmost = max(centers_by_label, key=lambda x: x[0])[0]   # x
+						topmost = min(centers_by_label, key=lambda x: x[1])[1]     # y
+						bottommost = max(centers_by_label, key=lambda x: x[1])[1]  # y
+						
+						relations[box_index][0] = 1 if centers[box_index][0] == leftmost else 0
+						relations[box_index][1] = 1 if centers[box_index][0] == rightmost else 0
+						relations[box_index][2] = 1 if centers[box_index][1] == topmost else 0
+						relations[box_index][3] = 1 if centers[box_index][1] == bottommost else 0
+
+						# please note that if only one bounding box is associated to a label,
+						# then their relations will be [1, 1, 1, 1] by construction
+
+
+			do_locations = True  # TODO: remove
+			locations = []
+			if do_locations:
+				# locations [left, right, top, bottom]
+				for noun_phrase in query:
+					location = [
+						1 if "left" in noun_phrase else 0,
+						1 if "right" in noun_phrase else 0,
+						1 if "top" in noun_phrase else 0,
+						1 if "bottom" in noun_phrase else 0,
+					]
+					locations.append(location)
 
 			bert_query_input_ids = []
 			bert_query_attention_mask = []
@@ -245,6 +303,8 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 				'head': head,
 				'bert_query_input_ids': bert_query_input_ids,
 				'bert_query_attention_mask': bert_query_attention_mask,
+				'relations': relations,
+				'locations': locations,
 			}
 			entries.append(entry)
 	return entries
