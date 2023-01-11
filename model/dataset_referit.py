@@ -124,7 +124,7 @@ class ReferitDataset(Dataset):
 			heads_idx.append([0] * lens)
 		heads_idx = heads_idx[:Q]
 
-		pad_location = [0, 0, 0, 0]
+		pad_location = [0, 0, 0, 0, 0, 0]
 		while (len(locations) < Q):
 			locations.append(pad_location)
 		locations = locations[:Q]
@@ -148,7 +148,7 @@ class ReferitDataset(Dataset):
 			target_bboxes.append(padline)
 		target_bboxes = target_bboxes[:Q]
 
-		pad_relation = [0, 0, 0, 0]
+		pad_relation = [0, 0, 0, 0, 0, 0]
 		while (len(relations) < K):
 			relations.append(pad_relation)
 		relations = relations[:K]
@@ -237,10 +237,12 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 					phrase_head = ' '.join(phrase_heads)   # we treat multiple heads as a phrase
 					head.append(phrase_head)
 			
-			relations = [[0 for i in range(4)] for j in range(len(bboxes))]  # [B, 4]
+			N_RELATIONS = 6
+
+			relations = [[1 for i in range(N_RELATIONS)] for j in range(len(bboxes))]
 			if do_relations:
 				
-				get_center = lambda x: (x[0] + x[2] / 2, x[1] + x[3] / 2)
+				get_center = lambda x: ((x[0] + x[2]) / 2, (x[1] + x[3]) / 2)
 
 				indexes = [i for i in range(len(bboxes))]
 				centers = [get_center(box) for box in bboxes]
@@ -249,29 +251,31 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 					indexes_by_label = [i for i in indexes if labels[i] == label]
 					centers_by_label = [centers[i] for i in indexes_by_label]
 
-					for box_index in indexes_by_label:
-						leftmost = min(centers_by_label, key=lambda x: x[0])[0]    # x
-						rightmost = max(centers_by_label, key=lambda x: x[0])[0]   # x
-						topmost = min(centers_by_label, key=lambda x: x[1])[1]     # y
-						bottommost = max(centers_by_label, key=lambda x: x[1])[1]  # y
-						
-						relations[box_index][0] = 1 if centers[box_index][0] == leftmost else 0
-						relations[box_index][1] = 1 if centers[box_index][0] == rightmost else 0
-						relations[box_index][2] = 1 if centers[box_index][1] == topmost else 0
-						relations[box_index][3] = 1 if centers[box_index][1] == bottommost else 0
+					if len(indexes_by_label) > 1:
+						for box_index in indexes_by_label:
+							leftmost = min(centers_by_label, key=lambda x: x[0])[0]    # x
+							rightmost = max(centers_by_label, key=lambda x: x[0])[0]   # x
+							topmost = min(centers_by_label, key=lambda x: x[1])[1]     # y
+							bottommost = max(centers_by_label, key=lambda x: x[1])[1]  # y
+							
+							relations[box_index][0] = 1 if centers[box_index][0] == leftmost else 0
+							relations[box_index][1] = 1 if centers[box_index][0] == rightmost else 0
+							relations[box_index][2] = 1 if centers[box_index][0] != leftmost and centers[box_index][0] != rightmost else 0
+							relations[box_index][3] = 1 if centers[box_index][1] == topmost else 0
+							relations[box_index][4] = 1 if centers[box_index][1] == bottommost else 0
+							relations[box_index][5] = 1 if centers[box_index][1] != topmost and centers[box_index][1] != bottommost else 0
 
-						# please note that if only one bounding box is associated to a label,
-						# then their relations will be [1, 1, 1, 1] by construction
-
-			locations = [[0 for i in range(4)] for j in range(len(query))]
+			locations = [[0 for i in range(N_RELATIONS)] for j in range(len(query))]
 			if do_locations:
 				# locations [left, right, top, bottom]
 				for noun_phrase in query:
 					location = [
 						1 if "left" in noun_phrase else 0,
 						1 if "right" in noun_phrase else 0,
+						1 if "center" in noun_phrase else 0,
 						1 if "top" in noun_phrase else 0,
 						1 if "bottom" in noun_phrase else 0,
+						1 if "middle" in noun_phrase else 0,
 					]
 					locations.append(location)
 

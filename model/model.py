@@ -266,24 +266,15 @@ class ConceptNet(nn.Module):
 				relations_ext = relations.unsqueeze(0).unsqueeze(0)                   # [1, 1, b, proposal, 4]
 				relations_ext = relations_ext.repeat(batch_size, n_queries, 1, 1, 1)  # [b, query, b, proposal, 4]
 
-				query_has_location = torch.any(locations_ext, dim=-1, keepdim=True).long()  # [b, query, b, proposal, 1]
+				has_locations = torch.any(locations_ext, dim=-1)  # [b, query, b, proposal]
 
-				proposal_has_relation = torch.any(relations_ext, dim=-1, keepdim=True)  # [b, query, b, proposal]
-				query_has_relation = torch.any(proposal_has_relation, dim=-2, keepdim=True).long()  # [b, query, b, proposal]
+				scores2 = locations_ext * relations_ext  # [b, query, b, proposal, 4]
+				scores2 = torch.sum(scores2, dim=-1)     # [b, query, b, proposal]
+				scores2 = scores2 >= 1                   # [b, query, b, proposal]
+				scores2 = scores2.float()                # [b, query, b, proposal]
 
-				# consider queries without locations
-				locations_ext = locations_ext + (1 - query_has_location)           # [b, query, 4]
-
-				# consider bounding box without relations when queries has no locations
-				relations_ext = relations_ext + (1 - query_has_location)  # consider bbox whether query has no locations
-				relations_ext = relations_ext + (1 - query_has_relation)  # put back all bboxes when no one has relations
-				relations_ext = relations_ext > 0  # [b, query, b, proposal, 4]
-				relations_ext = relations_ext.long()
-
-				scores2 = locations_ext * relations_ext
-				scores2 = torch.sum(scores2, dim=-1)  # [b, query, b, proposal]
-				scores2 = scores2 >= 2                # [b, query, b, proposal]
-				scores2 = scores2.float()             # [b, query, b, proposal]
+				# consider all scores when no location detected in query
+				scores2 = torch.masked_fill(scores2, mask=~has_locations, value=1.)
 
 				scores = scores * scores2 - (1 - scores2)
 
