@@ -29,18 +29,28 @@ def get_datasets(args):
 	else:
 		test_split = "val"
 
+	options = {
+		"train_fract": args.train_fract, 
+		"do_spellchecker": args.do_spellchecker, 
+		"do_oov": args.do_oov,
+		"do_head": args.do_head,
+		"do_bert": args.do_bert,
+		"do_relations": args.do_relations, 
+		"do_locations": args.do_locations
+	}
+
 	if args.dataset == "flickr30k":
-		test_dset = Flickr30Dataset(wordEmbedding, test_split, train_fract=args.train_fract, do_spellchecker=args.do_spellchecker, do_oov=args.do_oov, do_head=args.do_head, do_bert=args.do_bert)
+		test_dset = Flickr30Dataset(wordEmbedding, test_split, **options)
 		if args.dry_run:
 			train_dset = test_dset
 		else:
-			train_dset = Flickr30Dataset(wordEmbedding, "train", train_fract=args.train_fract, do_spellchecker=args.do_spellchecker, do_oov=args.do_oov, do_head=args.do_head, do_bert=args.do_bert)
+			train_dset = Flickr30Dataset(wordEmbedding, "train", **options)
 	else:
-		test_dset = ReferitDataset(wordEmbedding, test_split, train_fract=args.train_fract, do_spellchecker=args.do_spellchecker, do_oov=args.do_oov, do_head=args.do_head, do_bert=args.do_bert)
+		test_dset = ReferitDataset(wordEmbedding, test_split, **options)
 		if args.dry_run:
 			train_dset = test_dset
 		else:
-			train_dset = ReferitDataset(wordEmbedding, "train", train_fract=args.train_fract, do_spellchecker=args.do_spellchecker, do_oov=args.do_oov, do_head=args.do_head, do_bert=args.do_bert)
+			train_dset = ReferitDataset(wordEmbedding, "train", **options)
 	return train_dset, test_dset
 
 
@@ -94,6 +104,8 @@ def parse_args():
 	parser.add_argument('--do_bert', action="store_true", default=False)
 	parser.add_argument('--use_minilm_for_query_embedding', action="store_true", default=False)
 	parser.add_argument('--loss_sigmoid_slope', type=float, default=1.0)
+	parser.add_argument('--do_relations', action="store_true", default=False)
+	parser.add_argument('--do_locations', action="store_true", default=False)
 
 	# debug mode
 	parser.add_argument('--debug', action = 'store_true')

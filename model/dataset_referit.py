@@ -25,12 +25,12 @@ from model.dataset import load_boxes_classes, get_spacy_nlp
 
 
 class ReferitDataset(Dataset):
-	def __init__(self, wordEmbedding, name = 'train', dataroot = 'data/referit/',  train_fract=1.0, do_spellchecker=False, do_oov=False, do_head=False, do_bert=False):
+	def __init__(self, wordEmbedding, name = 'train', dataroot = 'data/referit/',  train_fract=1.0, do_spellchecker=False, do_oov=False, do_head=False, do_bert=False, do_relations=False, do_locations=False):
 		super(ReferitDataset, self).__init__()
 		print("Loading Referit dataset. Split: ", name)
 		self.indexer = wordEmbedding.word_indexer
 		print("Loading entries...")
-		self.entries, self.img_id2idx = load_dataset(name, dataroot, train_fract=train_fract, do_spellchecker=do_spellchecker, do_head=do_head, do_bert=do_bert)
+		self.entries, self.img_id2idx = load_dataset(name, dataroot, train_fract=train_fract, do_spellchecker=do_spellchecker, do_head=do_head, do_bert=do_bert, do_relations=do_relations, do_locations=do_locations)
 		print("Loading classes...")
 		self.class_labels = load_boxes_classes('data/objects_vocab.txt', word_embedding=wordEmbedding, word_indexer=self.indexer, do_spellchecker=do_spellchecker, do_oov=do_oov)
 		# img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
@@ -181,7 +181,7 @@ class ReferitDataset(Dataset):
 		return len(self.entries)
 
 
-def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spellchecker=False, do_head=False, do_bert=False):
+def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spellchecker=False, do_head=False, do_bert=False, do_relations=False, do_locations=False):
 	"""Load entries
 
 	img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
@@ -237,8 +237,6 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 					phrase_head = ' '.join(phrase_heads)   # we treat multiple heads as a phrase
 					head.append(phrase_head)
 			
-
-			do_relations = False  # TODO: remove
 			relations = [[0 for i in range(4)] for j in range(len(bboxes))]  # [B, 4]
 			if do_relations:
 				
@@ -265,8 +263,6 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 						# please note that if only one bounding box is associated to a label,
 						# then their relations will be [1, 1, 1, 1] by construction
 
-
-			do_locations = False  # TODO: remove
 			locations = [[0 for i in range(4)] for j in range(len(query))]
 			if do_locations:
 				# locations [left, right, top, bottom]
@@ -310,7 +306,7 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 	return entries
 
 
-def load_dataset(name = 'train', dataroot = 'data/referit/', train_fract=1.0, do_spellchecker=False, do_head=False, do_bert=False):
+def load_dataset(name = 'train', dataroot = 'data/referit/', train_fract=1.0, do_spellchecker=False, do_head=False, do_bert=False, do_relations=False, do_locations=False):
 	obj_detection_dict = json.load(open("data/referit/%s_detection_dict.json" % name, "r"))
 	img_id2idx = cPickle.load(open(os.path.join(dataroot, '%s_imgid2idx.pkl' % name), 'rb'))
 	ref_ann, ref_inst_ann, annotations = load_referit_annotations(dataroot + "refer/data/")
@@ -351,7 +347,7 @@ def load_dataset(name = 'train', dataroot = 'data/referit/', train_fract=1.0, do
 		subset_idx = random.sample([i for i in img_id2idx.keys()], int(n_subset))
 		img_id2idx = {key: img_id2idx[key] for key in subset_idx}
 
-	entries = load_train_referit(dataroot, img_id2idx, obj_detection_dict, annotations_dict, do_spellchecker=do_spellchecker, do_head=do_head, do_bert=do_bert)
+	entries = load_train_referit(dataroot, img_id2idx, obj_detection_dict, annotations_dict, do_spellchecker=do_spellchecker, do_head=do_head, do_bert=do_bert, do_relations=do_relations, do_locations=do_locations)
 	return entries, img_id2idx
 
 
