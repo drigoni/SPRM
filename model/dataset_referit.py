@@ -240,10 +240,10 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 			relations = [[0 for i in range(4)] for j in range(len(bboxes))]  # [B, 4]
 			if do_relations:
 				
-				make_center = lambda x: ((x[0] + x[2]) / 2, (x[1] + x[3]) / 2)
+				get_center = lambda x: (x[0] + x[2] / 2, x[1] + x[3] / 2)
 
 				indexes = [i for i in range(len(bboxes))]
-				centers = [make_center(box) for box in bboxes]
+				centers = [get_center(box) for box in bboxes]
 
 				for label in set(labels):
 					indexes_by_label = [i for i in indexes if labels[i] == label]
