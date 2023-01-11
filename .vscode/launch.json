@@ -9,7 +9,7 @@
       "type": "python",
       "request": "launch",
       "program": "main.py",
-      "args": ["--word_emb_dim=50", "--emb_dim=50", "--batch=4", "--loss_strategy=luca", "--dry_run", "--device=cpu", "--dataset=flickr30k", "--use_wv_freezed"],
+      "args": ["--word_emb_dim=50", "--emb_dim=50", "--batch=4", "--loss_strategy=luca", "--dry_run", "--device=cpu", "--dataset=flickr30k", "--do_head", "--use_head_for_concept_embedding"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "env": {
