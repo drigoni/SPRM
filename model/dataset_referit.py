@@ -277,6 +277,7 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 						1 if "bottom" in noun_phrase else 0,
 						1 if "middle" in noun_phrase else 0,
 					]
+					location = location if sum(location) > 0 else [1, 1, 1, 1, 1, 1]
 					locations.append(location)
 
 			bert_query_input_ids = []

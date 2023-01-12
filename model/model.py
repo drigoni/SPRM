@@ -254,8 +254,6 @@ class ConceptNet(nn.Module):
 				q_emb_ext = q_emb.unsqueeze(2).unsqueeze(2)	# [b, query, 1, 1, dim]
 				k_emb_ext = k_emb.unsqueeze(0).unsqueeze(0)	# [1, 1, b, proposal, dim]
 				scores = self.similarity_function(q_emb_ext, k_emb_ext)		# [b, query, b, proposal]
-				# mask
-				scores = scores.masked_fill(mask, -1e8)
 
 				# locations [b, query, 4]
 				# relations [b, proposal, 4]
@@ -266,19 +264,10 @@ class ConceptNet(nn.Module):
 				relations_ext = relations.unsqueeze(0).unsqueeze(0)                   # [1, 1, b, proposal, 4]
 				relations_ext = relations_ext.repeat(batch_size, n_queries, 1, 1, 1)  # [b, query, b, proposal, 4]
 
-				has_locations = torch.any(locations_ext, dim=-1)  # [b, query, b, proposal]
-
-				scores2 = locations_ext * relations_ext  # [b, query, b, proposal, 4]
-				scores2 = torch.sum(scores2, dim=-1)     # [b, query, b, proposal]
-				scores2 = scores2 >= 1                   # [b, query, b, proposal]
-				scores2 = scores2.float()                # [b, query, b, proposal]
-
-				# consider all scores when no location detected in query
-				scores2 = torch.masked_fill(scores2, mask=~has_locations, value=1.)
-
-				scores = scores * scores2 - (1 - scores2)
-
-				scores = scores.masked_fill(mask, -1e8)
+				spatial_bool = locations_ext * relations_ext  # [b, query, b, proposal, 4]
+				spatial_bool = torch.sum(spatial_bool, dim=-1)     # [b, query, b, proposal]
+				spatial_bool = spatial_bool < 1               # [b, query, b, proposal]
+				scores = scores.masked_fill(torch.logical_or(mask, spatial_bool), -1e8)
 
 			elif self.COSINE_SIMILARITY_STRATEGY == 'max':
 				# select the score considering only the most similar words in a query with the labels
