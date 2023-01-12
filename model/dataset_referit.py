@@ -40,6 +40,7 @@ class ReferitDataset(Dataset):
 		with h5py.File(h5_path, 'r') as hf:
 			self.features = np.array(hf.get('image_features'))	# different from flickr30k. We generate them
 			self.pos_boxes = np.array(hf.get('pos_boxes'))
+			self.spatial_features = np.array(hf.get('spatial_features'))
 		print("Dataset loaded.")
 			
 
@@ -74,11 +75,21 @@ class ReferitDataset(Dataset):
 
 		feature = torch.from_numpy(self.features[pos[0]:pos[1]]).float()
 
+		spatial_features = torch.from_numpy(self.spatial_features[pos[0]:pos[1]]).float()
+
 		if feature.size(0) < K:
 			pad = nn.ZeroPad2d((0, 0, 0, K - feature.size(0)))
 			feature = pad(feature)
 		else:
 			feature = feature[:K]
+
+		if spatial_features.size(0) < K:
+			pad = nn.ZeroPad2d((0, 0, 0, K - spatial_features.size(0)))
+			spatial_features = pad(spatial_features)
+		else:
+			spatial_features = spatial_features[:K]
+		spatial_features[:, 4] = spatial_features[:, 4] * spatial_features[:, 5]
+		spatial_features = spatial_features[:, :5]
 
 		num_obj = min(len(labels), K)
 		num_query = min(len(querys), Q)
@@ -158,8 +169,9 @@ class ReferitDataset(Dataset):
 		# torch.tensor(heads_idx)
 
 		return torch.tensor(int(imgid)), torch.tensor(labels_idx), torch.tensor(attr_idx), feature, \
-			   torch.tensor(querys_idx), bboxes, torch.tensor(target_bboxes), torch.tensor(num_obj), torch.tensor(
-			num_query), torch.tensor(heads_idx), torch.tensor(bert_query_input_ids), torch.tensor(bert_query_attention_mask)
+			torch.tensor(querys_idx), bboxes, torch.tensor(target_bboxes), torch.tensor(num_obj), torch.tensor(
+			num_query), torch.tensor(heads_idx), torch.tensor(bert_query_input_ids), \
+			torch.tensor(bert_query_attention_mask), spatial_features
 
 	def __len__(self):
 		return len(self.entries)
