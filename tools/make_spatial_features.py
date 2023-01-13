@@ -35,10 +35,9 @@ if __name__ == "__main__":
             return f"{data_root}/flickr30k_images/{image_id}.jpg"
         if dataset == "referit":
             image_id_str = str(image_id)
+            image_id_str = image_id_str.zfill(5)
 
-            image_id_str = "0" * (5 - len(image_id_str)) + image_id_str
-
-            image_id_part1 = str(image_id)[:2]
+            image_id_part1 = image_id_str[:2]
 
             return f"{data_root}/refer/data/images/saiapr_tc-12/{image_id_part1}/images/{image_id}.jpg"
         return f"{image_id}.jpg"

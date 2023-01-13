@@ -31,8 +31,6 @@ class Flickr30Dataset(Dataset):
 		print("Loading classes...")
 		self.class_labels = load_boxes_classes('data/objects_vocab.txt', word_embedding=wordEmbedding, word_indexer=self.indexer, do_spellchecker=do_spellchecker, do_oov=do_oov)
 		# img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
-		print("Loading images size...")
-		self.images_size = json.load(open(f'{dataroot}/{name}_images_size.json', 'r'))
 		print("Loading features...")
 		h5_path = os.path.join(dataroot, '%s_features_compress.hdf5' % name)
 

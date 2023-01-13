@@ -50,7 +50,8 @@ class ReferitDataset(Dataset):
 			# attrs = entry['attrs']
 		return entry['image'], entry['labels'], entry['query'], entry['head'], attrs, \
 			entry['detected_bboxes'], entry['target_bboxes'], entry['bert_query_input_ids'], \
-			entry['bert_query_attention_mask'], entry['locations'], entry['relations']
+			entry['bert_query_attention_mask'], entry['locations'], entry['relations'], \
+			entry['width'], entry['height']
 
 	def __getitem__(self, index):
 		'''
@@ -71,7 +72,7 @@ class ReferitDataset(Dataset):
 		B = 20		# max number of target boxes to consider for each query.
 
 		imgid, labels, querys, heads, attrs, bboxes, target_bboxes, bert_query_input_ids, \
-			bert_query_attention_mask, locations, relations = self._get_entry(index)
+			bert_query_attention_mask, locations, relations, width, height = self._get_entry(index)
 
 		idx = self.img_id2idx[int(imgid)]  # to retrieve pos in pos_box
 		pos = self.pos_boxes[idx]
@@ -193,7 +194,7 @@ class ReferitDataset(Dataset):
 		return len(self.entries)
 
 
-def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spellchecker=False, do_head=False, do_bert=False, do_relations=False, do_locations=False):
+def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, images_size, do_spellchecker=False, do_head=False, do_bert=False, do_relations=False, do_locations=False):
 	"""Load entries
 
 	img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
@@ -221,6 +222,10 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 		attrs = obj_detection[image_id]['attrs'] if 'attrs' in obj_detection[image_id].keys() else []
 		image_annotations = annotations[image_id]
 		assert (len(bboxes) == len(labels))
+
+		image_size = images_size[image_id]
+		image_width = image_size[0]
+		image_height = image_size[1]
 
 		for ann in image_annotations:
 			query = ann['query']
@@ -388,6 +393,8 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 				'bert_query_attention_mask': bert_query_attention_mask,
 				'relations': relations,
 				'locations': locations,
+				'width': image_width,
+				'height': image_height,
 			}
 			entries.append(entry)
 	return entries
@@ -402,6 +409,8 @@ def load_dataset(name = 'train', dataroot = 'data/referit/', train_fract=1.0, do
 	for i in annotations:
 		image_id = i['img_id'][:-4] # remove .jpg
 		annotations_dict[image_id].append(i)
+	
+	images_size = json.load(open(os.path.join(dataroot, '%s_images_size.json' % name), 'r'))
 	
 	# print("Max number of queries: ", max([len(v) for k, v in annotations_dict.items()]))
 	# print("Min number of queries: ", min([len(v) for k, v in annotations_dict.items()]))
@@ -434,7 +443,8 @@ def load_dataset(name = 'train', dataroot = 'data/referit/', train_fract=1.0, do
 		subset_idx = random.sample([i for i in img_id2idx.keys()], int(n_subset))
 		img_id2idx = {key: img_id2idx[key] for key in subset_idx}
 
-	entries = load_train_referit(dataroot, img_id2idx, obj_detection_dict, annotations_dict, do_spellchecker=do_spellchecker, do_head=do_head, do_bert=do_bert, do_relations=do_relations, do_locations=do_locations)
+	entries = load_train_referit(dataroot, img_id2idx, obj_detection_dict, annotations_dict, images_size, do_spellchecker=do_spellchecker, do_head=do_head, do_bert=do_bert, do_relations=do_relations, do_locations=do_locations)
+
 	return entries, img_id2idx
 
 
