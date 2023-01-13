@@ -21,7 +21,7 @@ import json
 import pickle as pickle
 from collections import defaultdict
 
-from model.dataset import load_boxes_classes, get_spacy_nlp
+from model.dataset import load_boxes_classes, get_spacy_nlp, get_box_relations, get_query_locations
 
 
 class ReferitDataset(Dataset):
@@ -254,118 +254,9 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, images_
 					phrase_head = ' '.join(phrase_heads)   # we treat multiple heads as a phrase
 					head.append(phrase_head)
 			
-			# N_RELATIONS = 6
-			# relations = [[1 for i in range(N_RELATIONS)] for j in range(len(bboxes))]
-			# if do_relations:
-			# 	get_center = lambda x: ((x[0] + x[2]) / 2, (x[1] + x[3]) / 2)
-			# 	horizontal_thresh = 50
-			# 	vertical_thresh = 50
-			# 	indexes = [i for i in range(len(bboxes))]
-			# 	centers = [get_center(box) for box in bboxes]
+			relations = get_box_relations(bboxes, labels, image_width, image_height, enabled=do_relations)
 
-			# 	for label in set(labels):
-			# 		indexes_by_label = [i for i in indexes if labels[i] == label]
-			# 		centers_by_label = [centers[i] for i in indexes_by_label]
-
-			# 		if len(indexes_by_label) > 1:
-			# 			for box_index in indexes_by_label:
-			# 				leftmost = min(centers_by_label, key=lambda x: x[0])[0]    # x
-			# 				rightmost = max(centers_by_label, key=lambda x: x[0])[0]   # x
-			# 				topmost = min(centers_by_label, key=lambda x: x[1])[1]     # y
-			# 				bottommost = max(centers_by_label, key=lambda x: x[1])[1]  # y
-							
-			# 				if rightmost - leftmost >  horizontal_thresh:
-			# 					relations[box_index][0] = 1 if centers[box_index][0] == leftmost else 0
-			# 					relations[box_index][1] = 1 if centers[box_index][0] == rightmost else 0
-
-			# 					if len(indexes_by_label) == 3:
-			# 						relations[box_index][2] = 1 if centers[box_index][0] != leftmost and centers[box_index][0] != rightmost else 0
-			# 					elif len(indexes_by_label) > 3:
-			# 						relations[box_index][0] = 1 if centers[box_index][0] == leftmost else 0
-			# 						relations[box_index][1] = 1 if centers[box_index][0] == rightmost else 0
-									
-			# 					# relations[box_index][3] = 1 if centers[box_index][1] == topmost else 0
-			# 					# relations[box_index][4] = 1 if centers[box_index][1] == bottommost else 0
-			# 					# relations[box_index][5] = 1 if centers[box_index][1] != topmost and centers[box_index][1] != bottommost else 0
-
-			# 	if (tmp_bbox_center[xmax_ind, 0] - tmp_bbox_center[
-			# 		xmin_ind, 0]) > horizontal_thresh:  # avoid the little shift of bbox
-			# 		descriptor[key][xmin_ind]['spatial'].append('left')
-			# 		descriptor[key][xmax_ind]['spatial'].append('right')
-			# 		if len(value) == 3:
-			# 			for ind in range(len(value)):
-			# 				if ind not in [xmin_ind, xmax_ind]:
-			# 					descriptor[key][ind]['spatial'].append('middle')
-			# 					descriptor[key][ind]['spatial'].append('center')
-			# 		elif len(value) > 3:
-			# 			for ind in range(len(value)):
-			# 				if ind not in [xmin_ind, xmax_ind]:
-			# 					if tmp_bbox_center[ind, 0] > image_size[1] * 3 / 4:
-			# 						descriptor[key][ind]['spatial'].append('right')
-			# 					elif tmp_bbox_center[ind, 0] < image_size[1] / 4:
-			# 						descriptor[key][ind]['spatial'].append('left')
-			# 					else:
-			# 						descriptor[key][ind]['spatial'].append('middle')
-			# 						descriptor[key][ind]['spatial'].append('center')
-			# 		else:
-			# 			pass
-
-			# 	if (tmp_bbox_center[ymax_ind, 1] - tmp_bbox_center[
-			# 		ymin_ind, 1]) > vertical_thresh:  # avoid the little shift of bbox
-			# 		descriptor[key][ymax_ind]['spatial'].append('bottom')
-			# 		descriptor[key][ymin_ind]['spatial'].append('top')
-			# 		for ind in range(len(value)):
-			# 			if ind not in [ymin_ind, ymax_ind]:
-			# 				if tmp_bbox_center[ind, 1] > image_size[0] * 3 / 4:
-			# 					descriptor[key][ind]['spatial'].append('bottom')
-			# 				elif tmp_bbox_center[ind, 1] < image_size[1] / 4:
-			# 					descriptor[key][ind]['spatial'].append('top')
-			# 				else:
-			# 					pass
-
-
-			N_RELATIONS = 6
-
-			relations = [[1 for i in range(N_RELATIONS)] for j in range(len(bboxes))]
-			if do_relations:
-				
-				get_center = lambda x: ((x[0] + x[2]) / 2, (x[1] + x[3]) / 2)
-
-				indexes = [i for i in range(len(bboxes))]
-				centers = [get_center(box) for box in bboxes]
-
-				for label in set(labels):
-					indexes_by_label = [i for i in indexes if labels[i] == label]
-					centers_by_label = [centers[i] for i in indexes_by_label]
-
-					if len(indexes_by_label) > 1:
-						for box_index in indexes_by_label:
-							leftmost = min(centers_by_label, key=lambda x: x[0])[0]    # x
-							rightmost = max(centers_by_label, key=lambda x: x[0])[0]   # x
-							topmost = min(centers_by_label, key=lambda x: x[1])[1]     # y
-							bottommost = max(centers_by_label, key=lambda x: x[1])[1]  # y
-							
-							relations[box_index][0] = 1 if centers[box_index][0] == leftmost else 0
-							relations[box_index][1] = 1 if centers[box_index][0] == rightmost else 0
-							relations[box_index][2] = 1 if centers[box_index][0] != leftmost and centers[box_index][0] != rightmost else 0
-							relations[box_index][3] = 1 if centers[box_index][1] == topmost else 0
-							relations[box_index][4] = 1 if centers[box_index][1] == bottommost else 0
-							relations[box_index][5] = 1 if centers[box_index][1] != topmost and centers[box_index][1] != bottommost else 0
-
-			locations = []
-			if do_locations:
-				# locations [left, right, top, bottom]
-				for noun_phrase in query:
-					location = [
-						1 if "left" in noun_phrase else 0,
-						1 if "right" in noun_phrase else 0,
-						1 if "center" in noun_phrase else 0,
-						1 if "top" in noun_phrase else 0,
-						1 if "bottom" in noun_phrase else 0,
-						1 if "middle" in noun_phrase else 0,
-					]
-					location = location if sum(location) > 0 else [1, 1, 1, 1, 1, 1]
-					locations.append(location)
+			locations = get_query_locations(query, enabled=do_locations)
 
 			bert_query_input_ids = []
 			bert_query_attention_mask = []

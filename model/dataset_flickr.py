@@ -18,16 +18,16 @@ from spellchecker import SpellChecker
 import spacy
 import random
 
-from model.dataset import load_boxes_classes, get_spacy_nlp
+from model.dataset import load_boxes_classes, get_spacy_nlp, get_box_relations, get_query_locations
 
 
 class Flickr30Dataset(Dataset):
-	def __init__(self, wordEmbedding, name = 'train', dataroot = 'data/flickr30k/',  train_fract=1.0, do_spellchecker=False, do_oov=False, do_head=False, do_bert=False):
+	def __init__(self, wordEmbedding, name = 'train', dataroot = 'data/flickr30k/',  train_fract=1.0, do_spellchecker=False, do_oov=False, do_head=False, do_bert=False, do_relations=False, do_locations=False):
 		super(Flickr30Dataset, self).__init__()
 		print("Loading flickr30k dataset. Split: ", name)
 		self.indexer = wordEmbedding.word_indexer
 		print("Loading entries...")
-		self.entries, self.img_id2idx = load_dataset(name, dataroot, train_fract=train_fract, do_spellchecker=do_spellchecker, do_head=do_head, do_bert=do_bert)
+		self.entries, self.img_id2idx = load_dataset(name, dataroot, train_fract=train_fract, do_spellchecker=do_spellchecker, do_head=do_head, do_bert=do_bert, do_relations=do_relations, do_locations=do_locations)
 		print("Loading classes...")
 		self.class_labels = load_boxes_classes('data/objects_vocab.txt', word_embedding=wordEmbedding, word_indexer=self.indexer, do_spellchecker=do_spellchecker, do_oov=do_oov)
 		# img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
@@ -45,7 +45,10 @@ class Flickr30Dataset(Dataset):
 		entry = self.entries[index]
 		attrs = []
 		# attrs = entry['attrs']
-		return entry['image'], entry['labels'], entry['query'], entry['head'], attrs, entry['detected_bboxes'], entry['target_bboxes'], entry['bert_query_input_ids'], entry['bert_query_attention_mask'], entry['width'], entry['height']
+		return entry['image'], entry['labels'], entry['query'], entry['head'], attrs, \
+			entry['detected_bboxes'], entry['target_bboxes'], entry['bert_query_input_ids'], \
+			entry['bert_query_attention_mask'], entry['locations'], entry['relations'], \
+			entry['width'], entry['height']
 
 	def __getitem__(self, index):
 		'''
@@ -65,7 +68,8 @@ class Flickr30Dataset(Dataset):
 		lens = 12
 		B = 20
 
-		imgid, labels, querys, heads, attrs, bboxes, target_bboxes, bert_query_input_ids, bert_query_attention_mask, width, height = self._get_entry(index)
+		imgid, labels, querys, heads, attrs, bboxes, target_bboxes, bert_query_input_ids, \
+			bert_query_attention_mask, locations, relations, width, height = self._get_entry(index)
 
 		idx = self.img_id2idx[int(imgid)]  # to retrieve pos in pos_box
 		pos = self.pos_boxes[idx]
@@ -120,6 +124,11 @@ class Flickr30Dataset(Dataset):
 			heads_idx.append([0] * lens)
 		heads_idx = heads_idx[:Q]
 
+		pad_location = [0, 0, 0, 0, 0, 0]
+		while (len(locations) < Q):
+			locations.append(pad_location)
+		locations = locations[:Q]
+
 		padbox = [0, 0, 0, 0]
 
 		while (len(bboxes) < K):
@@ -144,22 +153,30 @@ class Flickr30Dataset(Dataset):
 			target_bboxes.append(padline)
 		target_bboxes = target_bboxes[:Q]
 
+		pad_relation = [0, 0, 0, 0, 0, 0]
+		while (len(relations) < K):
+			relations.append(pad_relation)
+		relations = relations[:K]
+
 		assert len(labels_idx) == K
 		assert len(bboxes) == K
 		assert len(querys_idx) == Q
 		assert len(heads_idx) == Q
 		assert len(target_bboxes) == Q
+		assert len(relations) == K
+		assert len(locations) == Q
 
 		return torch.tensor(int(imgid)), torch.tensor(labels_idx), torch.tensor(attr_idx), feature, \
 			torch.tensor(querys_idx), bboxes, torch.tensor(target_bboxes), torch.tensor(num_obj), torch.tensor(
 			num_query), torch.tensor(heads_idx), torch.tensor(bert_query_input_ids), \
-			torch.tensor(bert_query_attention_mask), spatial_features
+			torch.tensor(bert_query_attention_mask), torch.tensor(locations), torch.tensor(relations), \
+			spatial_features
 
 	def __len__(self):
 		return len(self.entries)
 
 
-def load_train_flickr30k(dataroot, img_id2idx, obj_detection, images_size, do_spellchecker=False, do_head=False, do_bert=False):
+def load_train_flickr30k(dataroot, img_id2idx, obj_detection, images_size, do_spellchecker=False, do_head=False, do_bert=False, do_relations=False, do_locations=False):
 	"""Load entries
 
 	img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
@@ -227,7 +244,10 @@ def load_train_flickr30k(dataroot, img_id2idx, obj_detection, images_size, do_sp
 		image_width = image_size[0]
 		image_height = image_size[1]
 
+		relations = get_box_relations(bboxes, labels, image_width, image_height, enabled=do_relations)
+
 		assert (len(bboxes) == len(labels))
+		assert (len(relations) == len(labels))
 
 		# Parse Sentence
 		for sent_id, sent in enumerate(sents):
@@ -299,6 +319,8 @@ def load_train_flickr30k(dataroot, img_id2idx, obj_detection, images_size, do_sp
 				bert_query_input_ids = bert_tokenized["input_ids"].tolist()
 				bert_query_attention_mask = bert_tokenized["attention_mask"].tolist()
 
+			locations = get_query_locations(query, enabled=do_locations)
+
 			entry = {
 				'image': image_id,
 				'target_bboxes': target_bboxes,  # in order of entities
@@ -309,6 +331,8 @@ def load_train_flickr30k(dataroot, img_id2idx, obj_detection, images_size, do_sp
 				'head': head,
 				'bert_query_input_ids': bert_query_input_ids,
 				'bert_query_attention_mask': bert_query_attention_mask,
+				'relations': relations,
+				'locations': locations,
 				'width': image_width,
 				'height': image_height,
 			}
@@ -316,7 +340,7 @@ def load_train_flickr30k(dataroot, img_id2idx, obj_detection, images_size, do_sp
 	return entries
 
 
-def load_dataset(name = 'train', dataroot = 'data/flickr30k/', train_fract=1.0, do_spellchecker=False, do_head=False, do_bert=False):
+def load_dataset(name = 'train', dataroot = 'data/flickr30k/', train_fract=1.0, do_spellchecker=False, do_head=False, do_bert=False, do_relations=False, do_locations=False):
 	obj_detection_dict = json.load(open("data/flickr30k/%s_detection_dict.json" % name, "r"))
 	# n_objects = 0
 	# classes = set()
@@ -337,7 +361,7 @@ def load_dataset(name = 'train', dataroot = 'data/flickr30k/', train_fract=1.0, 
 		subset_idx = random.sample([i for i in img_id2idx.keys()], int(n_subset))
 		img_id2idx = {key: img_id2idx[key] for key in subset_idx}
 
-	entries = load_train_flickr30k(dataroot, img_id2idx, obj_detection_dict, images_size, do_spellchecker=do_spellchecker, do_head=do_head, do_bert=do_bert)
+	entries = load_train_flickr30k(dataroot, img_id2idx, obj_detection_dict, images_size, do_spellchecker=do_spellchecker, do_head=do_head, do_bert=do_bert, do_relations=do_relations, do_locations=do_locations)
 	return entries, img_id2idx
 
 
