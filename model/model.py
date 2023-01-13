@@ -31,6 +31,7 @@ class ConceptNet(nn.Module):
 		self.USE_MINILM_FOR_QUERY_EMBEDDING = args.use_minilm_for_query_embedding
 		self.USE_WV_FREEZED = args.use_wv_freezed
 		self.USE_SPATIAL_FEATURES = args.use_spatial_features
+		self.USE_RELATIONS_FOR_CONCEPT_EMBEDDING = args.use_relations_for_concept_embedding
 
 		# other NN
 		self.wordemb = wordvec
@@ -107,6 +108,11 @@ class ConceptNet(nn.Module):
 			q_feat = self._get_query_features(q_emb, num_words, self.EMB_DIM, 1)
 		else:
 			q_feat = self._get_query_features_att(q_emb, k_emb, bool_queries, bool_proposals) 
+
+		if not self.USE_RELATIONS_FOR_CONCEPT_EMBEDDING:
+			device = query.device
+			locations = torch.ones_like(locations, device=device)
+			relations = torch.ones_like(relations, device=device)
 
 		# get similarity scores
 		# NOTE: everything from here is masked with -1e8 and not 0.

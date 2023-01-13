@@ -9,7 +9,7 @@
       "type": "python",
       "request": "launch",
       "program": "main.py",
-      "args": ["--word_emb_dim=50", "--emb_dim=50", "--batch=4", "--loss_strategy=luca", "--dry_run", "--device=cpu", "--dataset=referit", "--do_head", "--use_head_for_concept_embedding", "--do_relations", "--do_locations"],
+      "args": ["--word_emb_dim=50", "--emb_dim=50", "--batch=4", "--loss_strategy=luca", "--dry_run", "--device=cpu", "--dataset=referit", "--do_head", "--use_head_for_concept_embedding", "--do_relations", "--do_locations", "--use_relations_for_concept_embedding"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "env": {
