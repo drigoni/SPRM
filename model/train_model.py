@@ -117,7 +117,7 @@ def evaluate(test_loader, model, loss_function, device_str='cuda'):
 				bert_query_attention_mask.to(device), locations.to(device), relations.to(device), spatial_features.to(device)
 
 		prediction, prediction_loss, selected_bbox, target_pred, query_similarity = model.predict(
-			query, head, labels, feature, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask, locations, relations
+			query, head, labels, feature, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask, locations, relations, spatial_features
 		)		# [B, 32, 4]
 
 		with torch.no_grad():
