@@ -31,6 +31,8 @@ class Flickr30Dataset(Dataset):
 		print("Loading classes...")
 		self.class_labels = load_boxes_classes('data/objects_vocab.txt', word_embedding=wordEmbedding, word_indexer=self.indexer, do_spellchecker=do_spellchecker, do_oov=do_oov)
 		# img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
+		print("Loading images size...")
+		self.images_size = json.load(open(f'{dataroot}/{name}_images_size.json', 'r'))
 		print("Loading features...")
 		h5_path = os.path.join(dataroot, '%s_features_compress.hdf5' % name)
 
@@ -45,7 +47,7 @@ class Flickr30Dataset(Dataset):
 		entry = self.entries[index]
 		attrs = []
 		# attrs = entry['attrs']
-		return entry['image'], entry['labels'], entry['query'], entry['head'], attrs, entry['detected_bboxes'], entry['target_bboxes'], entry['bert_query_input_ids'], entry['bert_query_attention_mask']
+		return entry['image'], entry['labels'], entry['query'], entry['head'], attrs, entry['detected_bboxes'], entry['target_bboxes'], entry['bert_query_input_ids'], entry['bert_query_attention_mask'], entry['width'], entry['height']
 
 	def __getitem__(self, index):
 		'''
@@ -65,7 +67,7 @@ class Flickr30Dataset(Dataset):
 		lens = 12
 		B = 20
 
-		imgid, labels, querys, heads, attrs, bboxes, target_bboxes, bert_query_input_ids, bert_query_attention_mask = self._get_entry(index)
+		imgid, labels, querys, heads, attrs, bboxes, target_bboxes, bert_query_input_ids, bert_query_attention_mask, width, height = self._get_entry(index)
 
 		idx = self.img_id2idx[int(imgid)]  # to retrieve pos in pos_box
 		pos = self.pos_boxes[idx]
@@ -130,6 +132,11 @@ class Flickr30Dataset(Dataset):
 		area = (bboxes[..., 3] - bboxes[..., 1]) * (bboxes[..., 2] - bboxes[..., 0])
 		bboxes = torch.cat((bboxes, area.unsqueeze_(-1)), -1)
 
+		spatial_features = bboxes.clone().float()
+		spatial_features = spatial_features[..., :4] / torch.tensor([[width, height, width, height]]).float()
+		area = (spatial_features[..., 3] - spatial_features[..., 1]) * (spatial_features[..., 2] - spatial_features[..., 0])
+		spatial_features = torch.cat((spatial_features, area.unsqueeze_(-1)), -1)
+
 		for bbox in target_bboxes:
 			while (len(bbox) < B):
 				bbox.append(padbox)
@@ -146,14 +153,15 @@ class Flickr30Dataset(Dataset):
 		assert len(target_bboxes) == Q
 
 		return torch.tensor(int(imgid)), torch.tensor(labels_idx), torch.tensor(attr_idx), feature, \
-			   torch.tensor(querys_idx), bboxes, torch.tensor(target_bboxes), torch.tensor(num_obj), torch.tensor(
-			num_query), torch.tensor(heads_idx), torch.tensor(bert_query_input_ids), torch.tensor(bert_query_attention_mask)
+			torch.tensor(querys_idx), bboxes, torch.tensor(target_bboxes), torch.tensor(num_obj), torch.tensor(
+			num_query), torch.tensor(heads_idx), torch.tensor(bert_query_input_ids), \
+			torch.tensor(bert_query_attention_mask), spatial_features
 
 	def __len__(self):
 		return len(self.entries)
 
 
-def load_train_flickr30k(dataroot, img_id2idx, obj_detection, do_spellchecker=False, do_head=False, do_bert=False):
+def load_train_flickr30k(dataroot, img_id2idx, obj_detection, images_size, do_spellchecker=False, do_head=False, do_bert=False):
 	"""Load entries
 
 	img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
@@ -216,6 +224,10 @@ def load_train_flickr30k(dataroot, img_id2idx, obj_detection, do_spellchecker=Fa
 		bboxes = obj_detection[image_id]['bboxes']
 		labels = obj_detection[image_id]['classes']  # [B, 4]
 		attrs = obj_detection[image_id]['attrs'] if 'attrs' in obj_detection[image_id].keys() else []
+
+		image_size = images_size[image_id]
+		image_width = image_size[0]
+		image_height = image_size[1]
 
 		assert (len(bboxes) == len(labels))
 
@@ -299,6 +311,8 @@ def load_train_flickr30k(dataroot, img_id2idx, obj_detection, do_spellchecker=Fa
 				'head': head,
 				'bert_query_input_ids': bert_query_input_ids,
 				'bert_query_attention_mask': bert_query_attention_mask,
+				'width': image_width,
+				'height': image_height,
 			}
 			entries.append(entry)
 	return entries
@@ -315,6 +329,8 @@ def load_dataset(name = 'train', dataroot = 'data/flickr30k/', train_fract=1.0, 
 	# print("Classes: ", len(classes), classes)
 	img_id2idx = cPickle.load(open(os.path.join(dataroot, '%s_imgid2idx.pkl' % name), 'rb'))
 
+	images_size = json.load(open(os.path.join(dataroot, '%s_images_size.json' % name), 'r'))
+
 	# subsample dataset accordin to train_fract value only in training set
 	if name == 'train' and train_fract < 1.0:
 		random.seed(2022)
@@ -323,7 +339,7 @@ def load_dataset(name = 'train', dataroot = 'data/flickr30k/', train_fract=1.0, 
 		subset_idx = random.sample([i for i in img_id2idx.keys()], int(n_subset))
 		img_id2idx = {key: img_id2idx[key] for key in subset_idx}
 
-	entries = load_train_flickr30k(dataroot, img_id2idx, obj_detection_dict, do_spellchecker=do_spellchecker, do_head=do_head, do_bert=do_bert)
+	entries = load_train_flickr30k(dataroot, img_id2idx, obj_detection_dict, images_size, do_spellchecker=do_spellchecker, do_head=do_head, do_bert=do_bert)
 	return entries, img_id2idx
 
 

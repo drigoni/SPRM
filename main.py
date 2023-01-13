@@ -106,6 +106,8 @@ def parse_args():
 	parser.add_argument('--loss_sigmoid_slope', type=float, default=1.0)
 	parser.add_argument('--do_relations', action="store_true", default=False)
 	parser.add_argument('--do_locations', action="store_true", default=False)
+	parser.add_argument('--use_wv_freezed', action="store_true", default=False)
+	parser.add_argument('--use_spatial_features', action="store_true", default=False)
 
 	# debug mode
 	parser.add_argument('--debug', action = 'store_true')

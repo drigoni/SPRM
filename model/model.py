@@ -29,12 +29,17 @@ class ConceptNet(nn.Module):
 		self.LSTM_NUM_LAYERS = args.lstm_num_layers
 		self.USE_HEAD_FOR_CONCEPT_EMBEDDING = args.use_head_for_concept_embedding
 		self.USE_MINILM_FOR_QUERY_EMBEDDING = args.use_minilm_for_query_embedding
+		self.USE_WV_FREEZED = args.use_wv_freezed
+		self.USE_SPATIAL_FEATURES = args.use_spatial_features
 
 		# other NN
 		self.wordemb = wordvec
 		self.indexer = wordvec.word_indexer
 		self.wv = nn.Embedding.from_pretrained(torch.from_numpy(wordvec.vectors), freeze = False)
 		self.wv_freezed = nn.Embedding.from_pretrained(torch.from_numpy(wordvec.vectors), freeze = True)
+
+		if self.USE_WV_FREEZED:
+			self.wv = self.wv_freezed
 
 		# NN image branch
 		self.linear_img = nn.Linear(20, 20)
@@ -55,7 +60,7 @@ class ConceptNet(nn.Module):
 		self.minilm = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 		
 
-	def forward(self, query, head, label, proposals_features, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask, locations, relations):
+	def forward(self, query, head, label, proposals_features, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask, locations, relations, spatial_features):
 		"""
 		NOTE: PAD is always 0 and UNK is always 1 by construction.
 		:param idx:
@@ -90,7 +95,13 @@ class ConceptNet(nn.Module):
 		q_emb, k_emb = self._encode(query, label, attrs, head, bool_words, bool_proposals)
 		q_emb_freezed, k_emb_freezed, head_emb_freezed = self._encode_freezed(query, label, attrs, head, bool_words, bool_proposals)
 		# get features. NOTE: inputs padded with 0
-		v_feat = self._get_image_features(bboxes, proposals_features, k_emb, bool_proposals, 1)
+		
+		if self.USE_SPATIAL_FEATURES:
+			# use scaled boxes features
+			v_feat = self._get_image_features(spatial_features, proposals_features, k_emb, bool_proposals, 1)
+		else:
+			v_feat = self._get_image_features(bboxes, proposals_features, k_emb, bool_proposals, 1)
+		
 		if self.USE_ATT_FOR_QUERY is False:
 			# so use LSTM
 			q_feat = self._get_query_features(q_emb, num_words, self.EMB_DIM, 1)
@@ -114,7 +125,7 @@ class ConceptNet(nn.Module):
 			new_mask = mask
 			new_bool_queries = bool_queries
 
-		prediction_scores = self._get_predictions(q_feat, v_feat, concepts_similarity, mask, self.PREDICTION_WEIGHT)
+		prediction_scores = self._get_predictions(q_feat, v_feat, concepts_similarity, new_mask, self.PREDICTION_WEIGHT)
 
 		# get query similarity
 		def get_query_similarity_helper():
@@ -155,8 +166,8 @@ class ConceptNet(nn.Module):
 
 		return prediction_scores, prediction_loss, target, query_similarity
 	
-	def predict(self, query, head, label, feature, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask, locations, relations):
-		prediction_scores, prediction_loss, target, query_similarity = self.forward(query, head, label, feature, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask, locations, relations)
+	def predict(self, query, head, label, feature, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask, locations, relations, spatial_features):
+		prediction_scores, prediction_loss, target, query_similarity = self.forward(query, head, label, feature, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask, locations, relations, spatial_features)
 		batch_size = prediction_scores.shape[0]
 		n_query = prediction_scores.shape[1]
 		n_proposal = prediction_scores.shape[3]

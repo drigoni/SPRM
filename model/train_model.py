@@ -43,7 +43,7 @@ def train(model, loss_function, train_loader, test_loader, args, lr = 1e-4, epoc
 		n_batches = 0
 
 		model.train(True)
-		for idx, labels, attrs, feature, query, bboxes, target_bboxes, num_obj, num_query, head, bert_query_input_ids, bert_query_attention_mask, locations, relations in tqdm(train_loader):
+		for idx, labels, attrs, feature, query, bboxes, target_bboxes, num_obj, num_query, head, bert_query_input_ids, bert_query_attention_mask, locations, relations, spatial_features in tqdm(train_loader):
 			# print('===============================================================================')
 			# print("bboxes: ", bboxes.shape, bboxes)
 			# print("target_bboxes: ", target_bboxes.shape, target_bboxes)
@@ -53,15 +53,15 @@ def train(model, loss_function, train_loader, test_loader, args, lr = 1e-4, epoc
 			
 			if (use_gpu):
 				idx, labels, attrs, feature, query, bboxes, target_bboxes, num_obj, num_query, \
-					head, bert_query_input_ids, bert_query_attention_mask, locations, relations = \
+					head, bert_query_input_ids, bert_query_attention_mask, locations, relations, spatial_features = \
 				idx.to(device), labels.to(device), attrs.to(device), feature.to(device), query.to(device), bboxes.to(device), \
 					target_bboxes.to(device), num_obj.to(device), num_query.to(device), head.to(device), bert_query_input_ids.to(device), \
-					bert_query_attention_mask.to(device), locations.to(device), relations.to(device)
+					bert_query_attention_mask.to(device), locations.to(device), relations.to(device), spatial_features.to(device)
 			
 			# training steps
 			optimizer.zero_grad()
 			prediction_scores, prediction_loss, target_pred, query_similarity = model.forward(
-				query, head, labels, feature, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask, locations, relations
+				query, head, labels, feature, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask, locations, relations, spatial_features
 			)
 			loss = loss_function(prediction_loss, target_pred, query_similarity)
 			loss.backward()
@@ -106,15 +106,15 @@ def evaluate(test_loader, model, loss_function, device_str='cuda'):
 	total_loss = 0
 
 	model.eval()
-	for idx, labels, attrs, feature, query, bboxes, target_bboxes, num_obj, num_query, head, bert_query_input_ids, bert_query_attention_mask, locations, relations in tqdm(test_loader):
+	for idx, labels, attrs, feature, query, bboxes, target_bboxes, num_obj, num_query, head, bert_query_input_ids, bert_query_attention_mask, locations, relations, spatial_features in tqdm(test_loader):
 		n_batches += 1
 
 		if (use_gpu):
 			idx, labels, attrs, feature, query, bboxes, target_bboxes, num_obj, num_query, \
-				head, bert_query_input_ids, bert_query_attention_mask, locations, relations = \
+				head, bert_query_input_ids, bert_query_attention_mask, locations, relations, spatial_features = \
 			idx.to(device), labels.to(device), attrs.to(device), feature.to(device), query.to(device), bboxes.to(device), \
 				target_bboxes.to(device), num_obj.to(device), num_query.to(device), head.to(device), bert_query_input_ids.to(device), \
-				bert_query_attention_mask.to(device), locations.to(device), relations.to(device)
+				bert_query_attention_mask.to(device), locations.to(device), relations.to(device), spatial_features.to(device)
 
 		prediction, prediction_loss, selected_bbox, target_pred, query_similarity = model.predict(
 			query, head, labels, feature, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask, locations, relations
