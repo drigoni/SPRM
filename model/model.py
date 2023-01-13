@@ -111,32 +111,38 @@ class ConceptNet(nn.Module):
 			concepts_similarity = self._get_concept_similarity(new_q_emb, k_emb_freezed, new_num_words, new_mask, locations, relations)
 		else:
 			concepts_similarity = self._get_concept_similarity(q_emb_freezed, k_emb_freezed, num_words, mask, locations, relations)
+			new_mask = mask
+			new_bool_queries = bool_queries
 
 		prediction_scores = self._get_predictions(q_feat, v_feat, concepts_similarity, mask, self.PREDICTION_WEIGHT)
 
 		# get query similarity
-		if self.USE_HEAD_FOR_QUERY_EMBEDDING:
-			new_q_emb = head_emb_freezed
-			new_bool_words = bool_heads
-		elif self.USE_MINILM_FOR_QUERY_EMBEDDING:
-			n_words = bert_query_input_ids.shape[2]
+		def get_query_similarity_helper():
+			if self.USE_HEAD_FOR_QUERY_EMBEDDING:
+				new_q_emb = head_emb_freezed
+				new_bool_words = bool_heads
+			elif self.USE_MINILM_FOR_QUERY_EMBEDDING:
+				n_words = bert_query_input_ids.shape[2]
 
-			input_ids = bert_query_input_ids.reshape(batch_size * n_queries, n_words)
-			attention_mask = bert_query_attention_mask.reshape(batch_size * n_queries, n_words)
+				input_ids = bert_query_input_ids.reshape(batch_size * n_queries, n_words)
+				attention_mask = bert_query_attention_mask.reshape(batch_size * n_queries, n_words)
 
-			with torch.no_grad():
-				model_output = self.minilm(input_ids, attention_mask=attention_mask)
+				with torch.no_grad():
+					model_output = self.minilm(input_ids, attention_mask=attention_mask)
 
-			sentence_embeddings = model_output[0]
-			sentence_embeddings = sentence_embeddings * attention_mask.unsqueeze(-1)
+				sentence_embeddings = model_output[0]
+				sentence_embeddings = sentence_embeddings * attention_mask.unsqueeze(-1)
 
-			new_q_emb = sentence_embeddings.reshape(batch_size, n_queries, n_words, -1)
-			new_bool_words = bert_query_attention_mask
-		else:
-			new_q_emb = q_emb_freezed
-			new_bool_words = bool_words
-		new_bool_queries = torch.any(new_bool_words, dim=-1).type(torch.long)  # [B, query]
-		query_similarity = self._get_query_similarity(new_q_emb, new_bool_words, new_bool_queries)  # [b, b]
+				new_q_emb = sentence_embeddings.reshape(batch_size, n_queries, n_words, -1)
+				new_bool_words = bert_query_attention_mask
+			else:
+				new_q_emb = q_emb_freezed
+				new_bool_words = bool_words
+			new_bool_queries_2 = torch.any(new_bool_words, dim=-1).type(torch.long)  # [B, query]
+			query_similarity = self._get_query_similarity(new_q_emb, new_bool_words, new_bool_queries_2)  # [b, b]
+			return query_similarity
+
+		query_similarity = get_query_similarity_helper()
 
 		# attention sulle phrases
 		# attmap = torch.einsum('avd, bqd -> baqv', k_emb, p_emb)  # [B1, K, dim] x [B2, querys, dim] => [B2, B1, querys, K]
@@ -145,7 +151,7 @@ class ConceptNet(nn.Module):
 		# maxatt, _ = attmap.max(dim = -1)  # [B1, B2, querys]: B1th sentence to B2th image
 		# logits = torch.sum(maxatt, dim = -1).div(num_query.unsqueeze(1).expand(maxatt.size(0), maxatt.size(1)))  # [B1, B2]: B1th sentence to B2th image
 
-		prediction_loss, target = self.get_predictions_for_loss(prediction_scores, bool_queries, bool_proposals, mask)
+		prediction_loss, target = self.get_predictions_for_loss(prediction_scores, new_bool_queries, bool_proposals, new_mask)
 
 		return prediction_scores, prediction_loss, target, query_similarity
 	

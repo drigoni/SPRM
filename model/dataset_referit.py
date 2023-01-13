@@ -335,7 +335,7 @@ def load_train_referit(dataroot, img_id2idx, obj_detection, annotations, do_spel
 							relations[box_index][4] = 1 if centers[box_index][1] == bottommost else 0
 							relations[box_index][5] = 1 if centers[box_index][1] != topmost and centers[box_index][1] != bottommost else 0
 
-			locations = [[0 for i in range(N_RELATIONS)] for j in range(len(query))]
+			locations = []
 			if do_locations:
 				# locations [left, right, top, bottom]
 				for noun_phrase in query:
