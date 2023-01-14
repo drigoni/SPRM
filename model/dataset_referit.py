@@ -64,7 +64,7 @@ class ReferitDataset(Dataset):
 		'''
 
 		K = 100		# number of boxes
-		Q = 39		# number of queries
+		Q = 87		# number of queries
 		lens = 12	# length of the query
 		B = 20		# max number of target boxes to consider for each query.
 
