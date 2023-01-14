@@ -88,8 +88,8 @@ def get_box_relations(boxes, labels, image_width, image_height, *, enabled=False
 
     if enabled:
         get_center = lambda x: ((x[0] + x[2]) / 2, (x[1] + x[3]) / 2)
-        horizontal_thresh = 10
-        vertical_thresh = 10
+        horizontal_thresh = 0
+        vertical_thresh = 0
         indexes = [i for i in range(len(boxes))]
         centers = [get_center(box) for box in boxes]
 
