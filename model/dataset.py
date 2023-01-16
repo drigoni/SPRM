@@ -81,7 +81,7 @@ def get_spacy_nlp():
     return nlp
 
 
-def get_box_relations(boxes, labels, image_width, image_height, *, enabled=False):
+def get_box_relations(boxes, labels, image_width, image_height, *, strategy="pseudo-q", enabled=False):
     N_RELATIONS = 6
     
     relations = [[1 for i in range(N_RELATIONS)] for j in range(len(boxes))]
@@ -106,30 +106,39 @@ def get_box_relations(boxes, labels, image_width, image_height, *, enabled=False
                 for box_index in indexes_by_label:							
                     cx, cy = centers[box_index]
 
-                    if rightmost - leftmost >  horizontal_thresh:
+                    if strategy == "pseudo-q":
+                        if rightmost - leftmost >  horizontal_thresh:
+                            relations[box_index][0] = 1 if cx == leftmost else 0
+                            relations[box_index][1] = 1 if cx == rightmost else 0
+
+                            if len(indexes_by_label) == 3:
+                                relations[box_index][2] = 1 if cx != leftmost and cx != rightmost else 0
+                            
+                            if len(indexes_by_label) > 3:
+                                relations[box_index][0] = 1 if cx < image_width / 4 and cx != leftmost else 0  # left
+                                relations[box_index][1] = 1 if cx > image_width * 3 / 4 and cx != rightmost else 0  # right
+                                relations[box_index][2] = 1 if cx >= image_width / 4 and cx <= image_width * 3 / 4 and cx != rightmost and cx != leftmost else 0  # center
+
+                        if bottommost - topmost > vertical_thresh:
+                            relations[box_index][3] = 1 if cy == topmost else 0
+                            relations[box_index][4] = 1 if cy == bottommost else 0
+
+                            if len(indexes_by_label) == 3:
+                                relations[box_index][5] = 1 if centers[box_index][1] != topmost and centers[box_index][1] != bottommost else 0
+
+                            if len(indexes_by_label) > 3:
+                                relations[box_index][3] = 1 if cy < image_height / 4 else 0
+                                relations[box_index][4] = 1 if cy > image_height * 3 / 4 else 0
+                                relations[box_index][5] = 1 if cy >= image_height / 4 and cy <= image_height * 3 / 4 and cy != topmost and cy != bottommost else 0
+                    
+                    if strategy == "baseline":
                         relations[box_index][0] = 1 if cx == leftmost else 0
                         relations[box_index][1] = 1 if cx == rightmost else 0
-
-                        if len(indexes_by_label) == 3:
-                            relations[box_index][2] = 1 if cx != leftmost and cx != rightmost else 0
-                        
-                        if len(indexes_by_label) > 3:
-                            relations[box_index][0] = 1 if cx < image_width / 4 and cx != leftmost else 0  # left
-                            relations[box_index][1] = 1 if cx > image_width * 3 / 4 and cx != rightmost else 0  # right
-                            relations[box_index][2] = 1 if cx >= image_width / 4 and cx <= image_width * 3 / 4 and cx != rightmost and cx != leftmost else 0  # center
-
-                    if bottommost - topmost > vertical_thresh:
+                        relations[box_index][2] = 1 if cx != leftmost and cy != rightmost else 0
                         relations[box_index][3] = 1 if cy == topmost else 0
                         relations[box_index][4] = 1 if cy == bottommost else 0
+                        relations[box_index][5] = 1 if cy != topmost and cy != bottommost else 0
 
-                        if len(indexes_by_label) == 3:
-                            relations[box_index][5] = 1 if centers[box_index][1] != topmost and centers[box_index][1] != bottommost else 0
-
-                        if len(indexes_by_label) > 3:
-                            relations[box_index][3] = 1 if cy < image_height / 4 else 0
-                            relations[box_index][4] = 1 if cy > image_height * 3 / 4 else 0
-                            relations[box_index][5] = 1 if cy >= image_height / 4 and cy <= image_height * 3 / 4 and cy != topmost and cy != bottommost else 0
-    
     return relations
 
 

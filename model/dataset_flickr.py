@@ -22,12 +22,12 @@ from model.dataset import load_boxes_classes, get_spacy_nlp, get_box_relations, 
 
 
 class Flickr30Dataset(Dataset):
-	def __init__(self, wordEmbedding, name = 'train', dataroot = 'data/flickr30k/',  train_fract=1.0, do_spellchecker=False, do_oov=False, do_head=False, do_bert=False, do_relations=False, do_locations=False):
+	def __init__(self, wordEmbedding, name = 'train', dataroot = 'data/flickr30k/',  train_fract=1.0, do_spellchecker=False, do_oov=False, do_head=False, do_bert=False, do_relations=False, do_locations=False, relations_strategy='none'):
 		super(Flickr30Dataset, self).__init__()
 		print("Loading flickr30k dataset. Split: ", name)
 		self.indexer = wordEmbedding.word_indexer
 		print("Loading entries...")
-		self.entries, self.img_id2idx = load_dataset(name, dataroot, train_fract=train_fract, do_spellchecker=do_spellchecker, do_head=do_head, do_bert=do_bert, do_relations=do_relations, do_locations=do_locations)
+		self.entries, self.img_id2idx = load_dataset(name, dataroot, train_fract=train_fract, do_spellchecker=do_spellchecker, do_head=do_head, do_bert=do_bert, do_relations=do_relations, do_locations=do_locations, relations_strategy=relations_strategy)
 		print("Loading classes...")
 		self.class_labels = load_boxes_classes('data/objects_vocab.txt', word_embedding=wordEmbedding, word_indexer=self.indexer, do_spellchecker=do_spellchecker, do_oov=do_oov)
 		# img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
@@ -176,7 +176,18 @@ class Flickr30Dataset(Dataset):
 		return len(self.entries)
 
 
-def load_train_flickr30k(dataroot, img_id2idx, obj_detection, images_size, do_spellchecker=False, do_head=False, do_bert=False, do_relations=False, do_locations=False):
+def load_train_flickr30k(
+		dataroot, 
+		img_id2idx, 
+		obj_detection, 
+		images_size, 
+		do_spellchecker=False, 
+		do_head=False, 
+		do_bert=False, 
+		do_relations=False, 
+		do_locations=False,
+		relations_strategy='none'
+	):
 	"""Load entries
 
 	img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
@@ -244,7 +255,7 @@ def load_train_flickr30k(dataroot, img_id2idx, obj_detection, images_size, do_sp
 		image_width = image_size[0]
 		image_height = image_size[1]
 
-		relations = get_box_relations(bboxes, labels, image_width, image_height, enabled=do_relations)
+		relations = get_box_relations(bboxes, labels, image_width, image_height, enabled=do_relations, strategy=relations_strategy)
 
 		assert (len(bboxes) == len(labels))
 		assert (len(relations) == len(labels))
@@ -340,7 +351,7 @@ def load_train_flickr30k(dataroot, img_id2idx, obj_detection, images_size, do_sp
 	return entries
 
 
-def load_dataset(name = 'train', dataroot = 'data/flickr30k/', train_fract=1.0, do_spellchecker=False, do_head=False, do_bert=False, do_relations=False, do_locations=False):
+def load_dataset(name = 'train', dataroot = 'data/flickr30k/', train_fract=1.0, do_spellchecker=False, do_head=False, do_bert=False, do_relations=False, do_locations=False, relations_strategy='none'):
 	obj_detection_dict = json.load(open("data/flickr30k/%s_detection_dict.json" % name, "r"))
 	# n_objects = 0
 	# classes = set()
@@ -361,7 +372,7 @@ def load_dataset(name = 'train', dataroot = 'data/flickr30k/', train_fract=1.0, 
 		subset_idx = random.sample([i for i in img_id2idx.keys()], int(n_subset))
 		img_id2idx = {key: img_id2idx[key] for key in subset_idx}
 
-	entries = load_train_flickr30k(dataroot, img_id2idx, obj_detection_dict, images_size, do_spellchecker=do_spellchecker, do_head=do_head, do_bert=do_bert, do_relations=do_relations, do_locations=do_locations)
+	entries = load_train_flickr30k(dataroot, img_id2idx, obj_detection_dict, images_size, do_spellchecker=do_spellchecker, do_head=do_head, do_bert=do_bert, do_relations=do_relations, do_locations=do_locations, relations_strategy=relations_strategy)
 	return entries, img_id2idx
 
 

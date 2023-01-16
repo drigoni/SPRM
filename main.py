@@ -36,7 +36,8 @@ def get_datasets(args):
 		"do_head": args.do_head,
 		"do_bert": args.do_bert,
 		"do_relations": args.do_relations, 
-		"do_locations": args.do_locations
+		"do_locations": args.do_locations,
+		"relations_strategy": args.relations_strategy,
 	}
 
 	if args.dataset == "flickr30k":
@@ -109,6 +110,7 @@ def parse_args():
 	parser.add_argument('--use_wv_freezed', action="store_true", default=False)
 	parser.add_argument('--use_spatial_features', action="store_true", default=False)
 	parser.add_argument('--use_relations_for_concept_embedding', action="store_true", default=False)
+	parser.add_argument('--relations_strategy', type=str, default="none", choices=["none", "pseudo-q", "baseline"])
 
 	# debug mode
 	parser.add_argument('--debug', action = 'store_true')
