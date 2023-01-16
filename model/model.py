@@ -32,15 +32,26 @@ class ConceptNet(nn.Module):
 		self.USE_WV_FREEZED = args.use_wv_freezed
 		self.USE_SPATIAL_FEATURES = args.use_spatial_features
 		self.USE_RELATIONS_FOR_CONCEPT_EMBEDDING = args.use_relations_for_concept_embedding
+		self.USE_DIFFERENT_EMBEDDING_SPACE = args.use_different_embedding_space
 
 		# other NN
 		self.wordemb = wordvec
 		self.indexer = wordvec.word_indexer
-		self.wv = nn.Embedding.from_pretrained(torch.from_numpy(wordvec.vectors), freeze = False)
+
+		# word embedding freezed
 		self.wv_freezed = nn.Embedding.from_pretrained(torch.from_numpy(wordvec.vectors), freeze = True)
 
+		# word embedding
+		if self.USE_DIFFERENT_EMBEDDING_SPACE:
+			self.wv_k = nn.Embedding.from_pretrained(torch.from_numpy(wordvec.vectors), freeze = False)
+			self.wv_q = nn.Embedding.from_pretrained(torch.from_numpy(wordvec.vectors), freeze = False)
+		else:
+			wv = nn.Embedding.from_pretrained(torch.from_numpy(wordvec.vectors), freeze = False)
+			self.wv_k = wv
+			self.wv_q = wv
 		if self.USE_WV_FREEZED:
-			self.wv = self.wv_freezed
+			self.wv_k = self.wv_freezed
+			self.wv_q = self.wv_freezed
 
 		# NN image branch
 		self.linear_img = nn.Linear(20, 20)
@@ -411,8 +422,8 @@ class ConceptNet(nn.Module):
 		mask_words = bool_words.unsqueeze(-1).eq(0)
 		mask_proposals = bool_proposals.unsqueeze(-1).eq(0)
 
-		q_emb = self.wv(query)
-		k_emb = self.wv(label)
+		q_emb = self.wv_q(query)
+		k_emb = self.wv_k(label)
 		# attr_emb = self.wv(attrs)
 		# head_emb = self.wv(query) # TODO: risolvi
 

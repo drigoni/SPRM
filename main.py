@@ -111,6 +111,7 @@ def parse_args():
 	parser.add_argument('--use_spatial_features', action="store_true", default=False)
 	parser.add_argument('--use_relations_for_concept_embedding', action="store_true", default=False)
 	parser.add_argument('--relations_strategy', type=str, default="none", choices=["none", "pseudo-q", "baseline"])
+	parser.add_argument('--use_different_embedding_space', action="store_true", default=False)
 
 	# debug mode
 	parser.add_argument('--debug', action = 'store_true')
