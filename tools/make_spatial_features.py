@@ -13,16 +13,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", choices=["flickr30k", "referit"])
     parser.add_argument("--split", choices=["train", "test", "val"])
+    parser.add_argument("--data-root", default="data")
 
     args = parser.parse_args()
 
     dataset = args.dataset
     split = args.split
+    data_root = args.data_root
 
     if not dataset in ["flickr30k", "referit"]:
         raise ValueError(f"Dataset '{dataset}' is not supported")
 
-    data_root = f"data/{dataset}"
+    data_root = f"{data_root}/{dataset}"
 
     img_index_path = f"{data_root}/{split}_imgid2idx.pkl"
     img_id2idx = pickle.load(open(img_index_path, "rb"))
