@@ -66,6 +66,7 @@ class Flickr30Dataset(Dataset):
 		K = 100
 		Q = 32
 		lens = 12
+		head_lens = 5
 		B = 20
 
 		imgid, labels, querys, heads, attrs, bboxes, target_bboxes, bert_query_input_ids, \
@@ -116,12 +117,12 @@ class Flickr30Dataset(Dataset):
 		heads_idx = []
 		for h in heads:
 			h = h.lower().split()
-			lis = [0] * lens
-			for i in range(min(len(h), lens)):
+			lis = [0] * head_lens
+			for i in range(min(len(h), head_lens)):
 				lis[i] = max(self.indexer.index_of(h[i]), 1)
 			heads_idx.append(lis)
 		while (len(heads_idx) < Q):
-			heads_idx.append([0] * lens)
+			heads_idx.append([0] * head_lens)
 		heads_idx = heads_idx[:Q]
 
 		pad_location = [0, 0, 0, 0, 0, 0]
