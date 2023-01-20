@@ -44,26 +44,50 @@ def load_data(img_folder):
     onlyfiles = [f for f in onlyfiles if f[-4:] == '.npz']
     print('Number of .npz files: ', len(onlyfiles))
 
-    # load all data ['image_id', 'image_w', 'image_h', 'num_boxes', 'boxes', 'features']
+    # load all data [x, bbox, num_bbox, image_h, image_w, info]
+    # info = {
+    # 'image_id': im_file.split('.')[0],
+    # 'image_h': np.size(im, 0),
+    # 'image_w': np.size(im, 1),
+    # 'num_boxes': len(keep_boxes),
+    # 'objects_id': image_objects,
+    # 'objects_conf': image_objects_conf,
+    # 'attrs_id': image_attrs,
+    # 'attrs_conf': image_attrs_conf,
+    # }
     all_data = defaultdict(list)
     for img_file in tqdm(onlyfiles):
-        img_id = img_file.split('/')[-1][:-8]   # remove ".jpg.npz"
+        img_id = img_file.split('/')[-1][:-4]   # remove ".npz"
         with np.load(img_file, allow_pickle=True) as f:
-            # get best class in order to filter the __background__ boxes
-            best_class_idx = np.argmax(f['cls_prob'], axis=-1)
-            selected_boxes = f['bbox'][best_class_idx > 0, :]
-            selected_features = f['x'][:, best_class_idx > 0]   # this is transposed [2048, 100]
-            n_selected_boxes = sum(best_class_idx > 0)
-            # print(n_selected_boxes, f['num_bbox'])
-            # all_data['boxes'].append(base64.b64encode(f['bbox']))
-            # save data
-            # NOTE: be careful with the order. It should match the make_dataset_h5py.py file.
             all_data['image_id'].append(img_id)
             all_data['image_w'].append(f['image_w'])
             all_data['image_h'].append(f['image_h'])
-            all_data['num_boxes'].append(n_selected_boxes)
-            all_data['boxes'].append(base64.b64encode(np.ascontiguousarray(selected_boxes)))
-            all_data['features'].append(base64.b64encode(np.ascontiguousarray(selected_features)))
+            all_data['num_boxes'].append(f['num_bbox'])
+            # check
+            # print(f['bbox'])
+            # print(base64.b64encode(f['bbox']))
+            # print(base64.b64decode(base64.b64encode(f['bbox'])))
+            # print(np.frombuffer(base64.b64decode(base64.b64encode(f['bbox'])), dtype=np.float32))
+            # exit(1)
+            all_data['boxes'].append(base64.b64encode(f['bbox']))
+            all_data['features'].append(base64.b64encode(f['x']))
+            # all_data['image_h_inner'].append(f['image_h_inner'])
+            # all_data['image_w_inner'].append(f['image_w_inner'])
+            data_info = f['info'].item()
+            # assert 0 not in data_info['objects_id']
+            assert 1600 not in data_info['objects_id']
+            new_cls_prob = [[1 if i == c else 0 for i in range(1600)] for c in data_info['objects_id']]
+            all_data['cls_prob'].append(new_cls_prob)
+            # print(data_info['objects_id'], len(data_info['objects_id']))
+            assert 0 not in data_info['objects_id']
+            all_data['attr_id'].append(data_info['attrs_id'])
+            all_data['attr_scores'].append(data_info['attrs_conf'])
+            # info = {
+            #     "objects": classes.cpu().numpy(),
+            #     "cls_prob": cls_probs.cpu().numpy(),
+            #     'attrs_id': attr_probs,
+            #     'attrs_scores': attr_scores,
+            # }
     return pd.DataFrame(all_data)
 
 

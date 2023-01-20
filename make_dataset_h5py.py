@@ -127,8 +127,11 @@ def extract(split, infiles, task='vqa'):
         with open(infile, "r+") as tsv_in_file:
             reader = csv.DictReader(tsv_in_file, delimiter='\t', fieldnames=FIELDNAMES)
             for item in reader:
-                print(item['image_id'])
+                # print(item['image_id'])
                 item['num_boxes'] = int(item['num_boxes'])
+                if item['num_boxes'] == 0:
+                    print("Box with 0 bounding boxes: ", item['image_id'])
+                    continue
                 item['boxes'] = ast.literal_eval(item['boxes'])
                 item['features'] = ast.literal_eval(item['features'])
                 image_id = int(item['image_id'])
