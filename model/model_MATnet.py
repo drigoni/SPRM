@@ -204,7 +204,7 @@ class MATnet(nn.Module):
 		q_emb = self.wv(query)
 		k_emb = self.wv(label)
 		# attr_emb = self.wv(attrs)
-		# head_emb = self.wv(query) # TODO: risolvi
+		# head_emb = self.wv(query)
 
 		# mask
 		q_emb = q_emb.masked_fill(mask_words, 0)

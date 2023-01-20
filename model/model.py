@@ -323,7 +323,7 @@ class ConceptNet(nn.Module):
 
 		q_emb = q_emb.view(-1, q_emb.size()[-2], q_emb.size()[-1])
 		q_emb = q_emb.permute(1, 0, 2).contiguous()
-		# NOTE: we need to fix the bug about queries with lengths 0. On cpu required by torch
+		# NOTE: this is required on cpu by pytorch due to a bug occurring with queries having length 0
 		q_length_clamp = q_length.view(-1).clamp(min=1).cpu()
 		queries_pack_emb = rnn.pack_padded_sequence(q_emb, q_length_clamp, enforce_sorted=False)
 		queries_x_o, (queries_x_h, queries_x_c) = self.queries_rnn(queries_pack_emb)
@@ -414,7 +414,7 @@ class ConceptNet(nn.Module):
 		q_emb = self.wv(query)
 		k_emb = self.wv(label)
 		# attr_emb = self.wv(attrs)
-		# head_emb = self.wv(query) # TODO: risolvi
+		# head_emb = self.wv(query)
 
 		# mask
 		q_emb = q_emb.masked_fill(mask_words, 0)
