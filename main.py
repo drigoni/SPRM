@@ -145,13 +145,21 @@ if __name__ == '__main__':
 		model = MATnet(wordEmbedding, args)
 	else:
 		model = ConceptNet(wordEmbedding, args)
+		import copy
+		args_copy = copy.deepcopy(args)
+		args_copy.cosine_weight = 0.0
+
+		print(args_copy)
+		model2 = ConceptNet(wordEmbedding, args_copy)
 	loss = WeakVtgLoss(args) 
 
 	if args.test_set:
 		if args.file:
 			init_net(model, args.file)
+			# init_net(model2, args.file)
 			model.to(device=args.device)
-		score = evaluate(test_loader, model, loss, device_str=args.device)
+			model2.to(device=args.device)
+		score = evaluate(test_loader, model, model2, loss, device_str=args.device)
 		print("untrained eval score:", score)
 	else:
 		best_model = train(model, loss, train_loader, test_loader, args, lr = args.lr, epochs = args.epochs, device_str=args.device, save_checkpoint=save_checkpoint if args.do_checkpoint else None)

@@ -328,7 +328,8 @@ def load_dataset(name = 'train', dataroot = 'data/referit/', train_fract=1.0, do
 	#exit(1)
 
 	# subsample dataset accordin to train_fract value only in training set
-	if name == 'train' and train_fract < 1.0:
+	#if name == 'train' and 
+	if train_fract < 1.0:
 		random.seed(2022)
 		n_images = len(img_id2idx)
 		n_subset = train_fract * n_images

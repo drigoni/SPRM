@@ -62,6 +62,13 @@ def load_boxes_classes(
                     word_embedding.vectors, added_idx, label_embedding, axis=0
                 )
 
+    # fill word_embedding.vectors up to 400297 with zeros
+    if word_embedding is not None:
+        word_embedding.vectors = np.concatenate(
+            (word_embedding.vectors, np.zeros((400297 - len(word_embedding.vectors), 300))),
+            axis=0,
+        )
+
     return labels
 
 
