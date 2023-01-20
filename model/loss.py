@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 
-class WeakVtgLoss(nn.Module):
+class SPRMLoss(nn.Module):
     def __init__(self, args):
         super().__init__()
         """
@@ -25,20 +25,20 @@ class WeakVtgLoss(nn.Module):
 
         do_neg = self.do_negative_weighting  # rename
 
-        if self.loss_strategy == "luca":
-            loss = forward_luca_random(
+        if self.loss_strategy == "neg1":
+            loss = forward_neg1_random(
                 predictions, target, query_weight, do_negative_weighting=do_neg
             )
-        elif self.loss_strategy == "luca_min":
-            loss = forward_luca_min(
+        elif self.loss_strategy == "neg1_min":
+            loss = forward_neg1_min(
                 predictions, target, query_weight, do_negative_weighting=do_neg
             )
-        elif self.loss_strategy == "luca_max":
-            loss = forward_luca_max(
+        elif self.loss_strategy == "neg1_max":
+            loss = forward_neg1_max(
                 predictions, target, query_weight, do_negative_weighting=do_neg
             )
-        elif self.loss_strategy == "all":
-            loss = forward_all(
+        elif self.loss_strategy == "negN":
+            loss = forward_negN(
                 predictions, target, query_weight, do_negative_weighting=do_neg
             )
         elif self.loss_strategy == "ce":
@@ -55,7 +55,7 @@ class WeakVtgLoss(nn.Module):
         return loss
 
 
-def forward_luca_random(
+def forward_neg1_random(
     predictions, target, query_weight, *, do_negative_weighting=False
 ):
     """
@@ -68,7 +68,7 @@ def forward_luca_random(
     neg_index = (target + 1) % batch_size  # [b]
     neg_index = neg_index.unsqueeze(-1)  # [b, 1]
 
-    return forward_luca(
+    return forward_neg1(
         predictions,
         target,
         query_weight,
@@ -77,7 +77,7 @@ def forward_luca_random(
     )
 
 
-def forward_luca_min(predictions, target, query_weight, *, do_negative_weighting=False):
+def forward_neg1_min(predictions, target, query_weight, *, do_negative_weighting=False):
     """
     Use as negative example the example with minimum similarity to the query, i.e. maximum value in query_weight
     """
@@ -93,7 +93,7 @@ def forward_luca_min(predictions, target, query_weight, *, do_negative_weighting
     neg_index = torch.argmax(query_weight_min, dim=-1)  # [b]
     neg_index = neg_index.unsqueeze(-1)  # [b, 1]
 
-    return forward_luca(
+    return forward_neg1(
         predictions,
         target,
         query_weight,
@@ -102,7 +102,7 @@ def forward_luca_min(predictions, target, query_weight, *, do_negative_weighting
     )
 
 
-def forward_luca_max(predictions, target, query_weight, *, do_negative_weighting=False):
+def forward_neg1_max(predictions, target, query_weight, *, do_negative_weighting=False):
     """
     Use as negative example the example with maximum similarity to the query, i.e. minimum value in query_weight
     """
@@ -118,7 +118,7 @@ def forward_luca_max(predictions, target, query_weight, *, do_negative_weighting
     neg_index = torch.argmin(query_weight_max, dim=-1)  # [b]
     neg_index = neg_index.unsqueeze(-1)  # [b, 1]
 
-    return forward_luca(
+    return forward_neg1(
         predictions,
         target,
         query_weight,
@@ -127,7 +127,7 @@ def forward_luca_max(predictions, target, query_weight, *, do_negative_weighting
     )
 
 
-def forward_luca(
+def forward_neg1(
     predictions, target, query_weight, *, neg_index, do_negative_weighting=False
 ):
     """
@@ -162,7 +162,7 @@ def forward_luca(
     return loss
 
 
-def forward_all(predictions, target, query_weight, *, do_negative_weighting=False):
+def forward_negN(predictions, target, query_weight, *, do_negative_weighting=False):
     """
     :param predictions: [b, b]
     :param target: [b]

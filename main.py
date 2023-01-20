@@ -3,10 +3,8 @@ import os
 import random
 import warnings
 
-import wandb
 import numpy as np
 import torch
-import wandb
 from torch.utils.data import DataLoader
 
 from model.dataset_flickr import Flickr30Dataset
@@ -14,7 +12,7 @@ from model.dataset_referit import ReferitDataset
 # from model import MATnet
 from model.model import ConceptNet
 from model.model_MATnet import MATnet
-from model.loss import WeakVtgLoss
+from model.loss import SPRMLoss
 from model.train_model import train, evaluate
 from utils.utils import load_vocabulary, init_net
 
@@ -57,29 +55,17 @@ def get_datasets(args):
 
 def parse_args():
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--batch', type = int, default = 64,
-						help = "batch size for training")
-	parser.add_argument('--lr', type = float, default = 1e-5,
-						help = "learning rate")
-	parser.add_argument('--eval', action = 'store_true',
-						help = "evaluation mode")
-	parser.add_argument('--epochs', type = int, default = 25,
-						help = "training epochs")
-	parser.add_argument('--save_name', type = str, default = 'model',
-						help = "name for saved model")
-	parser.add_argument('--test_set', action = 'store_true',
-						help = "use test set for evaluation")
-	parser.add_argument('--seed', type = int, default = 0,
-						help = "random seed")
-	parser.add_argument('--device', type= str, default='cuda',
-						choices=['cuda', 'cpu'])
-	parser.add_argument('--dataset', type= str, default='flickr30k',
-						choices=['flickr30k', 'referit'])
-	# model params
-	parser.add_argument('--cosine_similarity_strategy', type= str, default='mean',
-						choices=['mean', 'max'])
-	parser.add_argument('--loss_strategy', type= str, default='luca',
-						choices=['luca', 'luca_min', 'luca_max', 'all', 'ce'])
+	parser.add_argument('--batch', type = int, default = 64, help = "batch size for training")
+	parser.add_argument('--lr', type = float, default = 1e-5, help = "learning rate")
+	parser.add_argument('--eval', action = 'store_true', help = "evaluation mode")
+	parser.add_argument('--epochs', type = int, default = 25, help = "training epochs")
+	parser.add_argument('--save_name', type = str, default = 'model', help = "name for saved model")
+	parser.add_argument('--test_set', action = 'store_true', help = "use test set for evaluation")
+	parser.add_argument('--seed', type = int, default = 0, help = "random seed")
+	parser.add_argument('--device', type= str, default='cuda', choices=['cuda', 'cpu'])
+	parser.add_argument('--dataset', type= str, default='flickr30k', choices=['flickr30k', 'referit'])
+	parser.add_argument('--cosine_similarity_strategy', type= str, default='mean', choices=['mean', 'max'])
+	parser.add_argument('--loss_strategy', type= str, default='negN', choices=['neg1', 'neg1_min', 'neg1_max', 'negN', 'ce'])
 	parser.add_argument('--do_spellchecker', action="store_true", default=False)
 	parser.add_argument('--do_oov', action="store_true", default=False)
 	parser.add_argument('--do_negative_weighting', action="store_true", default=False)
@@ -122,8 +108,6 @@ if __name__ == '__main__':
 	args = parse_args()
 	print(args)
 
-	wandb.init(project="weakvg", entity="weakly_guys", config=vars(args))
-
 	# params and seeds
 	torch.manual_seed(args.seed)
 	random.seed(args.seed)
@@ -145,7 +129,7 @@ if __name__ == '__main__':
 		model = MATnet(wordEmbedding, args)
 	else:
 		model = ConceptNet(wordEmbedding, args)
-	loss = WeakVtgLoss(args) 
+	loss = SPRMLoss(args) 
 
 	if args.test_set:
 		if args.file:

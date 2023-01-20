@@ -1,5 +1,6 @@
 # Weakly-Supervised Visual-Textual Grounding with Semantic Prior Refinement
-This repository contains the code used to generate the results reported in the paper: [Weakly-Supervised Visual-Textual Grounding with Semantic Prior Refinement]() 
+
+This folder contains the code used to produce the results reported in the paper: [Weakly-Supervised Visual-Textual Grounding with Semantic Prior Refinement]() 
 
 Some of our code is based on [MAF](https://github.com/qinzzz/Multimodal-Alignment-Framework) . Thanks!
 
@@ -114,7 +115,7 @@ python main.py  --dataset flickr30k   \                       # dataset name [fl
                 --cosine_weight 0.4  \                        # omega hyper-parameter
                 --device cuda   \                             # device [cuda, cpu]
                 --cosine_similarity_strategy mean    \        # aggregation strategy. In the paper we adopt mean
-                --loss_strategy luca_max   \                  # Our negative contrastive loss
+                --loss_strategy neg1_max   \                  # Our negative contrastive loss
                 --train_fract 1   \                           # fraction fo training set (0, ..., 1]
                 --do_oov   \                                  # spell checking
                 --do_head   \                                 # extract noun phrase's head
@@ -133,24 +134,24 @@ python main.py --help
 ### Model Test
 In order to test the model:
 ```bash
-WANDB_MODE=offline python main.py   --dataset flickr30k   \                       # dataset name [flickr30k, referit]
-                                    --batch 16   \                                # batch size
-                                    --cosine_weight 0.4   \                       # omega hyper-parameter
-                                    --device cuda   \                             # device [cuda, cpu]
-                                    --cosine_similarity_strategy mean    \        # aggregation strategy. In the paper we adopt mean
-                                    --loss_strategy luca_max   \                  # Our negative contrastive loss
-                                    --train_fract 1   \                           # fraction fo training set (0, ..., 1]
-                                    --do_oov   \                                  # spell checking
-                                    --do_head   \                                 # extract noun phrase's head
-                                    --use_head_for_concept_embedding  \           # use head in the concept branch
-                                    --do_relations  \                             # use boxes relations
-                                    --do_locations   \                            # use noun phrase location
-                                    --use_relations_for_concept_embedding   \     # apply spatial relation
-                                    --relations_strategy baseline   \             # algorithm of labeling the spatial locations
-                                    --use_spatial_features   \                    # use normalized spatial coordinates
-                                    --test_set   \                                # load test set instead of validation set
-                                    --dry_run   \                                 # load only test set
-                                    --file ./output/flickr/best_omega1.pt \       # load checkpoint
+python main.py  --dataset flickr30k   \                       # dataset name [flickr30k, referit]
+                --batch 16   \                                # batch size
+                --cosine_weight 0.4   \                       # omega hyper-parameter
+                --device cuda   \                             # device [cuda, cpu]
+                --cosine_similarity_strategy mean    \        # aggregation strategy. In the paper we adopt mean
+                --loss_strategy neg1_max   \                  # Our negative contrastive loss
+                --train_fract 1   \                           # fraction fo training set (0, ..., 1]
+                --do_oov   \                                  # spell checking
+                --do_head   \                                 # extract noun phrase's head
+                --use_head_for_concept_embedding  \           # use head in the concept branch
+                --do_relations  \                             # use boxes relations
+                --do_locations   \                            # use noun phrase location
+                --use_relations_for_concept_embedding   \     # apply spatial relation
+                --relations_strategy baseline   \             # algorithm of labeling the spatial locations
+                --use_spatial_features   \                    # use normalized spatial coordinates
+                --test_set   \                                # load test set instead of validation set
+                --dry_run   \                                 # load only test set
+                --file ./output/flickr/best_omega1.pt \       # load checkpoint
 ```
 All the available parameters can be seen typing:
 ```
@@ -161,9 +162,3 @@ python main.py --help
 To download the pre-trained weights: [https://drive.google.com/file/d/1a2NW_v_XouHNB7LTIrSVRDni3O5i135j/view?usp=share_link](https://drive.google.com/file/d/1a2NW_v_XouHNB7LTIrSVRDni3O5i135j/view?usp=share_link).
 
 To download the ReferIt pre-processed dataset: [https://drive.google.com/file/d/1nJiN5jSP9tF0MJwQOkpbvI1YPsTySSoD/view?usp=share_link](https://drive.google.com/file/d/1nJiN5jSP9tF0MJwQOkpbvI1YPsTySSoD/view?usp=share_link)
-
-# Information
-For any questions and comments, contact [Davide Rigoni](mailto:davide.rigoni.2@phd.unipd.it) and/or [Luca Parolari](mailto:luca.parolari@unipd.it).
-
-# License
-MIT

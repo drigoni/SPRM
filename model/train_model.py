@@ -4,7 +4,6 @@ import warnings
 import torch
 import torch.nn as nn
 from tqdm import tqdm
-import wandb
 import copy
 
 from utils.evaluator import Evaluator
@@ -15,9 +14,6 @@ with warnings.catch_warnings():
 
 
 def train(model, loss_function, train_loader, test_loader, args, lr = 1e-4, epochs = 25, device_str='cuda', save_checkpoint=None):
-	# init wandb
-	wandb.watch(model)
-
 	# device
 	device = torch.device("cuda:0" if torch.cuda.is_available() and device_str == 'cuda' else "cpu")
 	use_gpu = torch.cuda.is_available()
@@ -86,11 +82,6 @@ def train(model, loss_function, train_loader, test_loader, args, lr = 1e-4, epoc
 		if save_checkpoint:
 			torch.save(copy.deepcopy(model).cpu().state_dict(), save_checkpoint.format(epoch))
 
-		wandb.log({	"loss": total_loss / n_batches,
-					"acc_val": score,
-					"point_acc_val": point_game_score,
-					"loss_val": loss_val,
-					})
 	return best_model
 
 
