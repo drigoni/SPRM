@@ -67,8 +67,8 @@ def train(model, loss_function, train_loader, test_loader, args, lr = 1e-4, epoc
 				image_embedding, text_embedding
 			)
 			loss = loss_function(prediction_loss, target_pred, query_similarity)
-			loss.backward()
-			optimizer.step()
+			# loss.backward()   # TODO: uncomment
+			# optimizer.step()  # TODO: uncomment
 
 			# update variables
 			n_batches += 1
