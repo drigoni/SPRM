@@ -61,7 +61,7 @@ class ConceptNet(nn.Module):
 		self.minilm = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 		
 
-	def forward(self, query, head, label, proposals_features, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask, locations, relations, spatial_features):
+	def forward(self, query, head, label, proposals_features, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask, locations, relations, spatial_features, image_embedding, text_embedding):
 		"""
 		NOTE: PAD is always 0 and UNK is always 1 by construction.
 		:param idx:
@@ -131,6 +131,9 @@ class ConceptNet(nn.Module):
 			new_mask = mask
 			new_bool_queries = bool_queries
 
+		q_feat = text_embedding
+		v_feat = image_embedding
+
 		prediction_scores = self._get_predictions(q_feat, v_feat, concepts_similarity, new_mask, self.PREDICTION_WEIGHT)
 
 		# get query similarity
@@ -172,8 +175,8 @@ class ConceptNet(nn.Module):
 
 		return prediction_scores, prediction_loss, target, query_similarity
 	
-	def predict(self, query, head, label, feature, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask, locations, relations, spatial_features):
-		prediction_scores, prediction_loss, target, query_similarity = self.forward(query, head, label, feature, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask, locations, relations, spatial_features)
+	def predict(self, query, head, label, feature, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask, locations, relations, spatial_features, image_embedding, text_embedding):
+		prediction_scores, prediction_loss, target, query_similarity = self.forward(query, head, label, feature, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask, locations, relations, spatial_features, image_embedding, text_embedding)
 		batch_size = prediction_scores.shape[0]
 		n_query = prediction_scores.shape[1]
 		n_proposal = prediction_scores.shape[3]

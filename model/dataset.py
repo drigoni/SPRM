@@ -1,5 +1,9 @@
+from typing import List
+
 import numpy as np
 import spacy
+import torch
+from PIL import Image
 from spellchecker import SpellChecker
 
 
@@ -163,3 +167,47 @@ def get_query_locations(query, enabled=False):
                 locations[i] = location
 
     return locations
+
+
+def get_image_embedding(img: np.array, boxes: np.array, model, preprocess, *, device):
+    def to_pil(img):
+        patch = (img * 255.).astype(np.uint8)
+        return Image.fromarray(patch).convert("RGB")
+
+    patches = []
+
+    for box in boxes:
+        x1, y1, x2, y2 = box
+        x, y, w, h = x1, y1, x2 - x1, y2 - y1
+
+        patch = img[y:y+h, x:x+w]
+        patch = to_pil(patch)
+        patch = preprocess(patch).unsqueeze(0)
+  
+        patches.append(patch)
+    
+    patches = torch.cat(patches, dim=0).to(device)
+    
+    return model.encode_image(patches)
+
+
+def get_text_embedding(queries: List[str], model, tokenize, *, device):
+    tokens = tokenize(queries).to(device)
+    return model.encode_text(tokens).float()
+
+
+def get_flickr30k_image_file(image_id, data_root):
+    """
+    Return the path to image file
+    """
+    return f"{data_root}/flickr30k_images/{image_id}.jpg"	
+
+
+def load_image(img_path, resize=None, pil=False):
+    image = Image.open(img_path).convert("RGB")
+    if resize is not None:
+        image = image.resize((resize, resize))
+    if pil:
+        return image
+    image = np.asarray(image).astype(np.float32) / 255. 
+    return image

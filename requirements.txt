@@ -6,3 +6,4 @@ tqdm
 wandb
 pyspellchecker
 spacy
+clip @ git+https://github.com/openai/CLIP.git
