@@ -32,6 +32,7 @@ class ConceptNet(nn.Module):
 		self.USE_WV_FREEZED = args.use_wv_freezed
 		self.USE_SPATIAL_FEATURES = args.use_spatial_features
 		self.USE_RELATIONS_FOR_CONCEPT_EMBEDDING = args.use_relations_for_concept_embedding
+		self.USE_CLIP_EMB = args.use_clip_emb
 
 		# other NN
 		self.wordemb = wordvec
@@ -131,8 +132,9 @@ class ConceptNet(nn.Module):
 			new_mask = mask
 			new_bool_queries = bool_queries
 
-		q_feat = text_embedding
-		v_feat = image_embedding
+		if self.USE_CLIP_EMB:
+			q_feat = text_embedding
+			v_feat = image_embedding
 
 		prediction_scores = self._get_predictions(q_feat, v_feat, concepts_similarity, new_mask, self.PREDICTION_WEIGHT)
 

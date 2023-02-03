@@ -24,12 +24,12 @@ from utils import utils
 
 
 class Flickr30Dataset(Dataset):
-	def __init__(self, wordEmbedding, name = 'train', dataroot = 'data/flickr30k/',  train_fract=1.0, do_spellchecker=False, do_oov=False, do_head=False, do_bert=False, do_relations=False, do_locations=False, relations_strategy='none', do_clip=False, device='cpu'):
+	def __init__(self, wordEmbedding, name = 'train', dataroot = 'data/flickr30k/',  train_fract=1.0, do_spellchecker=False, do_oov=False, do_head=False, do_bert=False, do_relations=False, do_locations=False, relations_strategy='none'):
 		super(Flickr30Dataset, self).__init__()
 		print("Loading flickr30k dataset. Split: ", name)
 		self.indexer = wordEmbedding.word_indexer
 		print("Loading entries...")
-		self.entries, self.img_id2idx = load_dataset(name, dataroot, train_fract=train_fract, do_spellchecker=do_spellchecker, do_head=do_head, do_bert=do_bert, do_relations=do_relations, do_locations=do_locations, relations_strategy=relations_strategy, do_clip=do_clip, device=device)
+		self.entries, self.img_id2idx = load_dataset(name, dataroot, train_fract=train_fract, do_spellchecker=do_spellchecker, do_head=do_head, do_bert=do_bert, do_relations=do_relations, do_locations=do_locations, relations_strategy=relations_strategy)
 		print("Loading classes...")
 		self.class_labels = load_boxes_classes('data/objects_vocab.txt', word_embedding=wordEmbedding, word_indexer=self.indexer, do_spellchecker=do_spellchecker, do_oov=do_oov)
 		# img_id2idx: dict {img_id -> val} val can be used to retrieve image or features
@@ -40,6 +40,9 @@ class Flickr30Dataset(Dataset):
 			# print(hf.keys()) 	#<KeysViewHDF5 ['bboxes', 'features', 'pos_bboxes']>
 			self.features = np.array(hf.get('features'))
 			self.pos_boxes = np.array(hf.get('pos_bboxes'))
+		print("Loading clip emb...")
+		self.images_embedding = cPickle.load(open(os.path.join(dataroot, '%s_images_embedding.pkl' % name), 'rb'))
+		self.queries_embedding = cPickle.load(open(os.path.join(dataroot, '%s_queries_embedding.pkl' % name), 'rb'))
 		print("Dataset loaded.")
 			
 
@@ -50,7 +53,7 @@ class Flickr30Dataset(Dataset):
 		return entry['image'], entry['labels'], entry['query'], entry['head'], attrs, \
 			entry['detected_bboxes'], entry['target_bboxes'], entry['bert_query_input_ids'], \
 			entry['bert_query_attention_mask'], entry['locations'], entry['relations'], \
-			entry['width'], entry['height'], entry['image_embedding'], entry['text_embedding']
+			entry['width'], entry['height']
 
 	def __getitem__(self, index):
 		'''
@@ -72,8 +75,7 @@ class Flickr30Dataset(Dataset):
 		B = 20
 
 		imgid, labels, querys, heads, attrs, bboxes, target_bboxes, bert_query_input_ids, \
-			bert_query_attention_mask, locations, relations, width, height, image_embedding, \
-			text_embedding = self._get_entry(index)
+			bert_query_attention_mask, locations, relations, width, height = self._get_entry(index)
 
 		idx = self.img_id2idx[int(imgid)]  # to retrieve pos in pos_box
 		pos = self.pos_boxes[idx]
@@ -86,12 +88,17 @@ class Flickr30Dataset(Dataset):
 		else:
 			feature = feature[:K]
 
+		image_embedding = self.images_embedding[int(imgid)]
+		image_embedding = torch.from_numpy(image_embedding).float()
 		if image_embedding.size(0) < K:
 			pad = nn.ZeroPad2d((0, 0, 0, K - image_embedding.size(0)))
 			image_embedding = pad(image_embedding)
 		else:
 			image_embedding = image_embedding[:K]
-
+		
+		text_embedding = self.queries_embedding[int(imgid)]
+		text_embedding = [torch.from_numpy(query_emb).float() for query_emb in text_embedding]
+		text_embedding = torch.cat(text_embedding, dim=0)
 		if text_embedding.size(0) < Q:
 			pad = nn.ZeroPad2d((0, 0, 0, Q - text_embedding.size(0)))
 			text_embedding = pad(text_embedding)
@@ -192,10 +199,6 @@ class Flickr30Dataset(Dataset):
 		return len(self.entries)
 
 
-model, preprocess = clip.load("RN101", jit=False)
-model.eval()
-
-
 def load_train_flickr30k(
 		dataroot, 
 		img_id2idx, 
@@ -207,8 +210,6 @@ def load_train_flickr30k(
 		do_relations=False, 
 		do_locations=False,
 		relations_strategy='none',
-		do_clip=False,
-		device='cpu',
 	):
 	"""Load entries
 
@@ -227,8 +228,6 @@ def load_train_flickr30k(
 			"sentence-transformers/all-MiniLM-L6-v2",
 			padding=True, truncation=True,
 		)
-	global model
-	model = model.to(device).float()
 
 	pattern_phrase = r'\[(.*?)\]'
 	pattern_no = r'\/EN\#(\d+)'
@@ -356,21 +355,6 @@ def load_train_flickr30k(
 
 			locations = get_query_locations(query, enabled=do_locations)
 
-			image_embedding = torch.tensor([])
-			if do_clip:
-				with torch.no_grad():
-					image = load_image(get_flickr30k_image_file(image_id, dataroot))
-					image_embedding = get_image_embedding(image, bboxes, model, preprocess, device=device)
-
-				assert len(image_embedding) == len(bboxes)
-
-			text_embedding = torch.tensor([])
-			if do_clip:
-				with torch.no_grad():
-					text_embedding = get_text_embedding(query, model, tokenize=clip.tokenize, device=device)
-				
-				assert len(text_embedding) == len(query)
-
 			entry = {
 				'image': image_id,
 				'target_bboxes': target_bboxes,  # in order of entities
@@ -385,14 +369,12 @@ def load_train_flickr30k(
 				'locations': locations,
 				'width': image_width,
 				'height': image_height,
-				'image_embedding': image_embedding,
-				'text_embedding': text_embedding,
 			}
 			entries.append(entry)
 	return entries
 
 
-def load_dataset(name = 'train', dataroot = 'data/flickr30k/', train_fract=1.0, do_spellchecker=False, do_head=False, do_bert=False, do_relations=False, do_locations=False, relations_strategy='none', do_clip=False, device='cpu'):
+def load_dataset(name = 'train', dataroot = 'data/flickr30k/', train_fract=1.0, do_spellchecker=False, do_head=False, do_bert=False, do_relations=False, do_locations=False, relations_strategy='none'):
 	obj_detection_dict = json.load(open("data/flickr30k/%s_detection_dict.json" % name, "r"))
 	# n_objects = 0
 	# classes = set()
@@ -413,7 +395,7 @@ def load_dataset(name = 'train', dataroot = 'data/flickr30k/', train_fract=1.0, 
 		subset_idx = random.sample([i for i in img_id2idx.keys()], int(n_subset))
 		img_id2idx = {key: img_id2idx[key] for key in subset_idx}
 
-	entries = load_train_flickr30k(dataroot, img_id2idx, obj_detection_dict, images_size, do_spellchecker=do_spellchecker, do_head=do_head, do_bert=do_bert, do_relations=do_relations, do_locations=do_locations, relations_strategy=relations_strategy, do_clip=do_clip, device=device)
+	entries = load_train_flickr30k(dataroot, img_id2idx, obj_detection_dict, images_size, do_spellchecker=do_spellchecker, do_head=do_head, do_bert=do_bert, do_relations=do_relations, do_locations=do_locations, relations_strategy=relations_strategy)
 	return entries, img_id2idx
 
 

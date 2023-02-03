@@ -23,7 +23,7 @@ def main():
     split = args.split
     data_root = args.data_root
     clip_model = args.clip_model
-    device = "cpu" #"cuda" if torch.cuda.is_available() else "cpu"
+    device = ("cuda" if torch.cuda.is_available() else "cpu") if args.device is None else args.device
 
     logging.info(f"Using device: {device}")
 
@@ -37,6 +37,9 @@ def main():
     detection_dict_path = f"{data_root}/{split}_detection_dict.json"
     detection_dict = json.load(open(detection_dict_path, "r"))
 
+    images_size_path = f"{data_root}/{split}_images_size.json"
+    images_size = json.load(open(images_size_path, "r"))
+
     skipped = []
 
     images_embedding = {}
@@ -44,22 +47,23 @@ def main():
     for image_id, idx in tqdm(img_id2idx.items()):
         image_file = dataset.get_image_file(image_id)
 
-        if str(image_id) not in detection_dict:
-            skipped.append(image_file)
-            continue
-        boxes = detection_dict[str(image_id)]["bboxes"]
-
         try:
             img = load_image(image_file)
         except FileNotFoundError:
             skipped.append(image_file)
             continue
 
-        with torch.no_grad():
-            patches = get_patches(img, boxes)
-            image_embedding = get_image_embedding(patches)
+        boxes = detection_dict[str(image_id)]["bboxes"]
+        size = images_size[str(image_id)]
 
-            images_embedding[image_id] = image_embedding
+        with torch.no_grad():
+            try:
+                patches = get_patches(img, boxes, size=size)
+                image_embedding = get_image_embedding(patches)
+            except:
+                print(f"Error with image {image_id} -> {image_file}")
+                raise
+            images_embedding[image_id] = image_embedding.cpu().numpy()
 
     logging.info(f"Skipped {len(skipped)} images over {len(img_id2idx.items())}")
     logging.debug(skipped)
@@ -68,12 +72,14 @@ def main():
     pickle.dump(images_embedding, open(output_path, "wb"))
 
 
-def get_patches(img: np.array, boxes: np.array) -> torch.Tensor:
+def get_patches(img: np.array, boxes: np.array, size: np.array) -> torch.Tensor:
     patches = []
+
+    iw, ih = size
 
     for box in boxes:
         x1, y1, x2, y2 = box
-        x, y, w, h = x1, y1, x2 - x1, y2 - y1
+        x, y, w, h = max(x1, 0), max(y1, 0), min(x2 - x1, iw) , min(y2 - y1, ih)
 
         patch = img[y:y+h, x:x+w]
         patch = to_pil(patch)
@@ -110,6 +116,7 @@ def parse_args():
     parser.add_argument("--split", choices=["train", "test", "val"])
     parser.add_argument("--data-root", default="data")
     parser.add_argument("--clip-model", default="RN50", choices=["RN50", "RN101", "RN50x4", "RN50x16", "ViT-B/32", "ViT-B/16"])
+    parser.add_argument("--device", default=None, choices=["cpu", "cuda"])
 
     return parser.parse_args()
 
