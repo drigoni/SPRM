@@ -60,6 +60,10 @@ class ConceptNet(nn.Module):
 
 		from transformers import AutoModel
 		self.minilm = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
+
+
+		self.img_mlp2 = MLP(1024, self.EMB_DIM, [], F.leaky_relu)
+		self.queries_mlp2 = MLP(1024, self.EMB_DIM, [], F.leaky_relu)
 		
 
 	def forward(self, query, head, label, proposals_features, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask, locations, relations, spatial_features, image_embedding, text_embedding):
@@ -134,7 +138,9 @@ class ConceptNet(nn.Module):
 
 		if self.USE_CLIP_EMB:
 			q_feat = text_embedding
+			q_feat = self.queries_mlp2(q_feat)
 			v_feat = image_embedding
+			v_feat = self.img_mlp2(v_feat)
 
 		prediction_scores = self._get_predictions(q_feat, v_feat, concepts_similarity, new_mask, self.PREDICTION_WEIGHT)
 
