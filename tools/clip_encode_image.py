@@ -81,9 +81,14 @@ def get_patches(img: np.array, boxes: np.array, size: np.array) -> torch.Tensor:
         x1, y1, x2, y2 = box
         x, y, w, h = max(x1, 0), max(y1, 0), min(x2 - x1, iw) , min(y2 - y1, ih)
 
-        patch = img[y:y+h, x:x+w]
-        patch = to_pil(patch)
-        patch = preprocess(patch).unsqueeze(0)
+        # workaround for empty boxes (bug in detection)
+        # occurs 2 times in training set
+        if w <= 0 or h <= 0:
+            patch = torch.zeros(1, 3, 224, 224)
+        else:
+            patch = img[y:y+h, x:x+w]
+            patch = to_pil(patch)
+            patch = preprocess(patch).unsqueeze(0)
 
         patches.append(patch)
     
