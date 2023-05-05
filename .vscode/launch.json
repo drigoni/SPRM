@@ -5,7 +5,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "main",
+      "name": "main (flickr)",
       "type": "python",
       "request": "launch",
       "program": "main.py",
@@ -19,11 +19,11 @@
       }
     },
     {
-      "name": "flickr (b=4, e=300, l=luca, spell+oov)",
+      "name": "main (referit)",
       "type": "python",
       "request": "launch",
       "program": "main.py",
-      "args": ["--word_emb_dim=300", "--emb_dim=300", "--batch=4", "--loss_strategy=luca", "--do_spellchecker", "--do_oov", "--dry_run", "--device=cpu"],
+      "args": ["--word_emb_dim=50", "--emb_dim=50", "--batch=4", "--loss_strategy=luca_max", "--dry_run", "--device=cpu", "--dataset=referit", "--do_head", "--use_head_for_concept_embedding", "--do_relations", "--do_locations", "--use_relations_for_concept_embedding", "--relations_strategy=baseline", "--use_clip_emb"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "env": {
@@ -32,16 +32,17 @@
       }
     },
     {
-      "name": "referit (b=4, e=300, l=luca, spell+oov)",
+      "name": "clip encode text",
       "type": "python",
       "request": "launch",
-      "program": "main.py",
-      "args": ["--word_emb_dim=300", "--emb_dim=300", "--batch=4", "--loss_strategy=luca", "--do_spellchecker", "--do_oov", "--dry_run", "--device=cpu", "--dataset=referit"],
+      "program": "tools/clip_encode_image.py",
+      "args": ["--dataset=referit", "--clip-model=RN101", "--split=test", "--device=cpu"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "env": {
         "PYTHONPATH":"${PYTHONPATH}:/home/lparolari/.miniconda3/envs/weakvg/bin",
-        "WANDB_MODE": "offline"
+        "WANDB_MODE": "offline",
+        "TOKENIZERS_PARALLELISM": "true"
       }
     },
     {
