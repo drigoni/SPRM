@@ -79,7 +79,7 @@ def get_patches(img: np.array, boxes: np.array, size: np.array) -> torch.Tensor:
 
     for box in boxes:
         x1, y1, x2, y2 = box
-        x, y, w, h = max(x1, 0), max(y1, 0), min(x2 - x1, iw) , min(y2 - y1, ih)
+        x, y, w, h = int(max(x1, 0)), int(max(y1, 0)), int(min(x2 - x1, iw)) , int(min(y2 - y1, ih))
 
         # workaround for empty boxes (bug in detection)
         # occurs 2 times in training set
