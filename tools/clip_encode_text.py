@@ -5,13 +5,12 @@ import re
 from typing import List
 
 import clip
-import numpy as np
 import torch
-from PIL import Image
 from tqdm import tqdm
 
 model, preprocess = None, None
 device = None
+
 
 def main():
     global model, preprocess
@@ -25,7 +24,11 @@ def main():
     split = args.split
     data_root = args.data_root
     clip_model = args.clip_model
-    device = ("cuda" if torch.cuda.is_available() else "cpu") if args.device is None else args.device
+    device = (
+        ("cuda" if torch.cuda.is_available() else "cpu")
+        if args.device is None
+        else args.device
+    )
 
     logging.info(f"Using device: {device}")
 
@@ -40,7 +43,7 @@ def main():
 
     queries_embedding = {}
 
-    if dataset_str == "flickr30k":    
+    if dataset_str == "flickr30k":
         for image_id, idx in tqdm(img_id2idx.items()):
             try:
                 sentences = dataset.get_sentences(image_id)
@@ -75,7 +78,6 @@ def main():
 
             queries_embedding[image_id] = text_embedding
 
-
     logging.info(f"Skipped {len(skipped)} images over {len(img_id2idx.items())}")
     logging.debug(skipped)
 
@@ -96,7 +98,11 @@ def parse_args():
     parser.add_argument("--dataset", choices=["flickr30k", "referit"])
     parser.add_argument("--split", choices=["train", "test", "val"])
     parser.add_argument("--data-root", default="data")
-    parser.add_argument("--clip-model", default="RN50", choices=["RN50", "RN101", "RN50x4", "RN50x16", "ViT-B/32", "ViT-B/16"])
+    parser.add_argument(
+        "--clip-model",
+        default="RN50",
+        choices=["RN50", "RN101", "RN50x4", "RN50x16", "ViT-B/32", "ViT-B/16"],
+    )
     parser.add_argument("--device", default=None, choices=["cpu", "cuda"])
 
     return parser.parse_args()
@@ -107,10 +113,10 @@ def get_dataset(dataset: str, data_root: str):
 
     if dataset == "flickr30k":
         return Flickr30k(data_root), data_root
-    
+
     if dataset == "referit":
         return ReferIt(data_root), data_root
-    
+
     raise ValueError(f"Dataset '{dataset}' is not supported")
 
 
@@ -121,27 +127,28 @@ class Flickr30k:
     def get_sentences(self, image_id: str) -> List[str]:
         sentence_file = f"{self.data_root}/Flickr30kEntities/Sentences/{image_id}.txt"
 
-        with open(sentence_file, 'r', encoding = 'utf-8') as f:
+        with open(sentence_file, "r", encoding="utf-8") as f:
             sentences = [x.strip() for x in f]
 
         return sentences
-    
+
     def get_queries(self, sentence) -> List[str]:
-        query_pattern = r'\[(.*?)\]'
+        query_pattern = r"\[(.*?)\]"
         queries = []
 
         entities = re.findall(query_pattern, sentence)
 
         for entity in entities:
-            _, query = entity.split(' ', 1)
+            _, query = entity.split(" ", 1)
             queries.append(query)
 
         return queries
 
+
 class ReferIt:
     def __init__(self, data_root: str):
         self.data_root = data_root
-        
+
         split_by = "berkeley"
         refs_file = f"{self.data_root}/refer/data/refclef/refs({split_by}).p"
         self.refs_repo = RefsRepository(refs_file)
@@ -151,6 +158,7 @@ class ReferIt:
 
     def get_queries(self, ann_id):
         return self.refs_repo.get_queries(ann_id)
+
 
 class RefsRepository:
     def __init__(self, refs_file):
