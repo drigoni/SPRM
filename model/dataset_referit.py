@@ -107,7 +107,7 @@ class ReferitDataset(Dataset):
 		else:
 			image_embedding = image_embedding[:K]
 		
-		text_embedding = self.queries_embedding[int(imgid)]
+		text_embedding = [self.queries_embedding[int(imgid)]]
 		text_embedding = [torch.from_numpy(query_emb).float() for query_emb in text_embedding]
 		text_embedding = torch.cat(text_embedding, dim=0)
 		if text_embedding.size(0) < Q:
