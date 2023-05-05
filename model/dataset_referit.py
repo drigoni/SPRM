@@ -41,6 +41,9 @@ class ReferitDataset(Dataset):
 			self.features = np.array(hf.get('image_features'))	# different from flickr30k. We generate them
 			self.pos_boxes = np.array(hf.get('pos_boxes'))
 			self.spatial_features = np.array(hf.get('spatial_features'))
+		print("Loading clip emb...")
+		self.images_embedding = cPickle.load(open(os.path.join(dataroot, '%s_images_embedding.pkl' % name), 'rb'))
+		self.queries_embedding = cPickle.load(open(os.path.join(dataroot, '%s_queries_embedding.pkl' % name), 'rb'))
 		print("Dataset loaded.")
 			
 
@@ -95,6 +98,23 @@ class ReferitDataset(Dataset):
 			spatial_features = spatial_features[:K]
 		spatial_features[:, 4] = spatial_features[:, 4] * spatial_features[:, 5]
 		spatial_features = spatial_features[:, :5]
+
+		image_embedding = self.images_embedding[int(imgid)]
+		image_embedding = torch.from_numpy(image_embedding).float()
+		if image_embedding.size(0) < K:
+			pad = nn.ZeroPad2d((0, 0, 0, K - image_embedding.size(0)))
+			image_embedding = pad(image_embedding)
+		else:
+			image_embedding = image_embedding[:K]
+		
+		text_embedding = self.queries_embedding[int(imgid)]
+		text_embedding = [torch.from_numpy(query_emb).float() for query_emb in text_embedding]
+		text_embedding = torch.cat(text_embedding, dim=0)
+		if text_embedding.size(0) < Q:
+			pad = nn.ZeroPad2d((0, 0, 0, Q - text_embedding.size(0)))
+			text_embedding = pad(text_embedding)
+		else:
+			text_embedding = text_embedding[:Q]
 
 		num_obj = min(len(labels), K)
 		num_query = min(len(querys), Q)
@@ -189,7 +209,7 @@ class ReferitDataset(Dataset):
 			torch.tensor(querys_idx), bboxes, torch.tensor(target_bboxes), torch.tensor(num_obj), \
 			torch.tensor(num_query), torch.tensor(heads_idx), torch.tensor(bert_query_input_ids), \
 			torch.tensor(bert_query_attention_mask), torch.tensor(locations), torch.tensor(relations), \
-			spatial_features
+			spatial_features, image_embedding, text_embedding
 
 	def __len__(self):
 		return len(self.entries)
