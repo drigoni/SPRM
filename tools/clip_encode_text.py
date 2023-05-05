@@ -21,7 +21,7 @@ def main():
 
     args = parse_args()
 
-    dataset = args.dataset
+    dataset_str = args.dataset
     split = args.split
     data_root = args.data_root
     clip_model = args.clip_model
@@ -29,7 +29,7 @@ def main():
 
     logging.info(f"Using device: {device}")
 
-    dataset, data_root = get_dataset(dataset, data_root)
+    dataset, data_root = get_dataset(dataset_str, data_root)
     model, preprocess = clip.load(clip_model, device=device, jit=False)
     model = model.to(device).float()
 
@@ -40,25 +40,41 @@ def main():
 
     queries_embedding = {}
 
-    for image_id, idx in tqdm(img_id2idx.items()):
-        try:
-            sentences = dataset.get_sentences(image_id)
-        except:
-            skipped.append(image_id)
-            continue
+    if dataset_str == "flickr30k":    
+        for image_id, idx in tqdm(img_id2idx.items()):
+            try:
+                sentences = dataset.get_sentences(image_id)
+            except:
+                skipped.append(image_id)
+                continue
 
-        embedding_list = []
+            embedding_list = []
 
-        for sentence in sentences:
-            queries = dataset.get_queries(sentence)
+            for sentence in sentences:
+                queries = dataset.get_queries(sentence)
+
+                with torch.no_grad():
+                    text_embedding = get_text_embedding(queries)
+                    text_embedding = text_embedding.cpu().numpy()
+
+                embedding_list.append(text_embedding)
+
+            queries_embedding[image_id] = embedding_list
+
+    if dataset_str == "referit":
+        for image_id, ann_id in tqdm(dataset.get_identifiers(split)):
+            queries = dataset.get_queries(ann_id)
+
+            if not queries:
+                skipped.append(image_id)
+                continue
 
             with torch.no_grad():
                 text_embedding = get_text_embedding(queries)
                 text_embedding = text_embedding.cpu().numpy()
 
-            embedding_list.append(text_embedding)
+            queries_embedding[image_id] = text_embedding
 
-        queries_embedding[image_id] = embedding_list
 
     logging.info(f"Skipped {len(skipped)} images over {len(img_id2idx.items())}")
     logging.debug(skipped)
@@ -93,8 +109,7 @@ def get_dataset(dataset: str, data_root: str):
         return Flickr30k(data_root), data_root
     
     if dataset == "referit":
-        raise NotImplementedError("Referit dataset is not supported yet")
-        #return Referit(data_root), data_root
+        return ReferIt(data_root), data_root
     
     raise ValueError(f"Dataset '{dataset}' is not supported")
 
@@ -123,17 +138,57 @@ class Flickr30k:
 
         return queries
 
-class Referit:
+class ReferIt:
     def __init__(self, data_root: str):
         self.data_root = data_root
+        
+        split_by = "berkeley"
+        refs_file = f"{self.data_root}/refer/data/refclef/refs({split_by}).p"
+        self.refs_repo = RefsRepository(refs_file)
 
-    def get_image_file(self, image_id: str):
-        image_id_str = str(image_id)
-        image_id_str = image_id_str.zfill(5)
+    def get_identifiers(self, split):
+        return self.refs_repo.get_identifiers(split)
 
-        image_id_part1 = image_id_str[:2]
+    def get_queries(self, ann_id):
+        return self.refs_repo.get_queries(ann_id)
 
-        return f"{self.data_root}/refer/data/images/saiapr_tc-12/{image_id_part1}/images/{image_id}.jpg"
+class RefsRepository:
+    def __init__(self, refs_file):
+        self.refs_file = refs_file
+
+        self.annid2idx = {}  # : Dict[str, int]
+        self.data = None
+
+        self._load()
+        self._build_annid2idx()
+
+    def get_identifiers(self, split):
+        return [
+            (ref["image_id"], ref["ann_id"])
+            for ref in self.data
+            if ref["split"] == split
+        ]
+
+    def get_queries(self, ann_id):
+        ref = self._get_ref(ann_id)
+        return [sentence["raw"].strip().lower() for sentence in ref["sentences"]]
+
+    def get_target(self, ann_id):
+        ref = self._get_ref(ann_id)
+        return ref["bbox"]
+
+    def _get_ref(self, ann_id):
+        idx = self.annid2idx[ann_id]
+        ref = self.data[idx]
+        return ref
+
+    def _load(self):
+        with open(self.refs_file, "rb") as f:
+            self.data = pickle.load(f)
+
+    def _build_annid2idx(self):
+        for i, ref in enumerate(self.data):
+            self.annid2idx[ref["ann_id"]] = i
 
 
 if __name__ == "__main__":
