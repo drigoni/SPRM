@@ -5,7 +5,7 @@ import clip
 import logging
 import numpy as np
 import json
-from PIL import Image
+from PIL import Image, ImageOps
 from tqdm import tqdm
 
 model, preprocess = None, None
@@ -105,7 +105,7 @@ def to_pil(img):
 
 
 def load_image(img_path, resize: tuple=None, pil=False):
-    image = Image.open(img_path).convert("RGB")
+    image = ImageOps.exif_transpose(Image.open(img_path)).convert("RGB")
     if resize is not None:
         image = image.resize((resize, resize))
     if pil:
