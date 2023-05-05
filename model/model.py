@@ -138,11 +138,7 @@ class ConceptNet(nn.Module):
 
 		if self.USE_CLIP_EMB:
 			q_feat = text_embedding
-			q_feat = self.queries_mlp2(q_feat)
-			q_feat = torch.nn.functional.relu(q_feat)
 			v_feat = image_embedding
-			v_feat = self.img_mlp2(v_feat)
-			v_feat = torch.nn.functional.relu(v_feat)
 
 		prediction_scores = self._get_predictions(q_feat, v_feat, concepts_similarity, new_mask, self.PREDICTION_WEIGHT)
 
