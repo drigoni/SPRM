@@ -147,6 +147,13 @@ if __name__ == '__main__':
 		model = ConceptNet(wordEmbedding, args)
 	loss = WeakVtgLoss(args) 
 
+	for name, param in model.named_parameters():
+		print(name, param.requires_grad, param.shape)
+	print("SUM of all trainable parameters:", sum(p.numel() for p in model.parameters() if p.requires_grad))
+	print("SUM of all un-trainable parameters:", sum(p.numel() for p in model.parameters() if not p.requires_grad))
+	print("SUM of all parameters:", sum(p.numel() for p in model.parameters()))
+	exit(0)
+
 	if args.test_set:
 		if args.file:
 			init_net(model, args.file)

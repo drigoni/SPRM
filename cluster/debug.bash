@@ -1,7 +1,5 @@
 #!/bin/bash
-
 # params
-PROJECT_HOME=/ceph/hpc/home/eudavider/repository/weakvg
 BATCH_SIZE=5
 DEVICE='cuda'
 COSINE_SIMILARITY_STRATEGY='mean'
@@ -10,7 +8,7 @@ MODEL_NAME='debug'
 EPOCHS=2
 
 # command
-python ${PROJECT_HOME}/main.py  --batch ${BATCH_SIZE} \
+python main.py  --batch ${BATCH_SIZE} \
                                 --device ${DEVICE} \
                                 --debug \
                                 --train_fract 0.1 \

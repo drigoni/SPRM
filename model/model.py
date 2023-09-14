@@ -57,8 +57,8 @@ class ConceptNet(nn.Module):
 		else:
 			self.similarity_function = nn.CosineSimilarity(dim=-1)
 
-		from transformers import AutoModel
-		self.minilm = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
+		# from transformers import AutoModel
+		# self.minilm = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 		
 
 	def forward(self, query, head, label, proposals_features, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask, locations, relations, spatial_features):
@@ -144,8 +144,8 @@ class ConceptNet(nn.Module):
 				input_ids = bert_query_input_ids.reshape(batch_size * n_queries, n_words)
 				attention_mask = bert_query_attention_mask.reshape(batch_size * n_queries, n_words)
 
-				with torch.no_grad():
-					model_output = self.minilm(input_ids, attention_mask=attention_mask)
+				# with torch.no_grad():
+				# 	model_output = self.minilm(input_ids, attention_mask=attention_mask)
 
 				sentence_embeddings = model_output[0]
 				sentence_embeddings = sentence_embeddings * attention_mask.unsqueeze(-1)

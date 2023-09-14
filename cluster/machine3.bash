@@ -1,20 +1,19 @@
-#!/bin/bash
-
 # params
-PROJECT_HOME=/home/drigoni/repository/weakvg
+PROJECT_HOME=./
 BATCH_SIZE=16
 EPOCHS=25
-COSINE_WEIGHT=0.5
+COSINE_WEIGHT=0.25
 DEVICE='cuda'
 COSINE_SIMILARITY_STRATEGY='mean'
 LOSS_STRATEGY='ce'
-MODEL_NAME='cosMean_lossCe_epoch25_cosW05'
-MODEL_CHECKPOINT='./output/cosMean_lossCe_epoch25_cosW05_backup.pt'
-
+MODEL_NAME='cosMean_lossCe_epoch25_cosW025_fract75'
 # command
-python ${PROJECT_HOME}/test.py  --batch ${BATCH_SIZE} \
+python ${PROJECT_HOME}/main.py  --batch ${BATCH_SIZE} \
+                                --epochs ${EPOCHS} \
                                 --cosine_weight ${COSINE_WEIGHT} \
                                 --device ${DEVICE} \
+                                --save_name ${MODEL_NAME} \
                                 --cosine_similarity_strategy ${COSINE_SIMILARITY_STRATEGY} \
                                 --loss_strategy ${LOSS_STRATEGY} \
-                                --file ${MODEL_CHECKPOINT}
+                                --train_fract 0.75
+                                # --dataset 'referit' \
