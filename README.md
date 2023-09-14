@@ -1,6 +1,6 @@
 # Weakly-Supervised Visual-Textual Grounding with Semantic Prior Refinement
 
-This folder contains the code used to produce the results reported in the paper: [Weakly-Supervised Visual-Textual Grounding with Semantic Prior Refinement]() 
+This repository contains the code used to produce the results reported in the paper: [Weakly-Supervised Visual-Textual Grounding with Semantic Prior Refinement]() 
 
 Some of our code is based on [MAF](https://github.com/qinzzz/Multimodal-Alignment-Framework) . Thanks!
 
@@ -162,3 +162,9 @@ python main.py --help
 To download the pre-trained weights: [https://drive.google.com/file/d/1a2NW_v_XouHNB7LTIrSVRDni3O5i135j/view?usp=share_link](https://drive.google.com/file/d/1a2NW_v_XouHNB7LTIrSVRDni3O5i135j/view?usp=share_link).
 
 To download the ReferIt pre-processed dataset: [https://drive.google.com/file/d/1nJiN5jSP9tF0MJwQOkpbvI1YPsTySSoD/view?usp=share_link](https://drive.google.com/file/d/1nJiN5jSP9tF0MJwQOkpbvI1YPsTySSoD/view?usp=share_link)
+
+# Information
+For any questions and comments, contact [davide.rigoni.2@phd.unipd.it](davide.rigoni.2@phd.unipd.it) or [luca.parolari@studenti.unipd.it](luca.parolari@studenti.unipd.it)
+
+# License
+MIT
