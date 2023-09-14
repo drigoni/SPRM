@@ -57,8 +57,9 @@ class ConceptNet(nn.Module):
 		else:
 			self.similarity_function = nn.CosineSimilarity(dim=-1)
 
-		from transformers import AutoModel
-		self.minilm = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
+		if self.USE_MINILM_FOR_QUERY_EMBEDDING:
+			from transformers import AutoModel
+			self.minilm = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 		
 
 	def forward(self, query, head, label, proposals_features, attrs, bboxes, bert_query_input_ids, bert_query_attention_mask, locations, relations, spatial_features):
