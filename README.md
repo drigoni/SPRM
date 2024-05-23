@@ -1,8 +1,19 @@
 # Weakly-Supervised Visual-Textual Grounding with Semantic Prior Refinement
 
-This repository contains the code used to produce the results reported in the paper: [Weakly-Supervised Visual-Textual Grounding with Semantic Prior Refinement]() 
-
+This repository contains the code used to produce the results reported in the paper: [Weakly-Supervised Visual-Textual Grounding with Semantic Prior Refinement](https://proceedings.bmvc2023.org/229/) \
 Some of our code is based on [MAF](https://github.com/qinzzz/Multimodal-Alignment-Framework) . Thanks!
+
+
+```
+@inproceedings{Rigoni_2023_BMVC,
+author    = {Davide Rigoni and Luca Parolari and Luciano Serafini and Alessandro Sperduti and Lamberto Ballan},
+title     = {Weakly-Supervised Visual-Textual Grounding with Semantic Prior Refinement},
+booktitle = {34th British Machine Vision Conference 2023, {BMVC} 2023, Aberdeen, UK, November 20-24, 2023},
+publisher = {BMVA},
+year      = {2023},
+url       = {https://papers.bmvc2023.org/0229.pdf}
+}
+```
 
 # Dependencies
 This project uses the `conda` environment.
